@@ -1,0 +1,165 @@
+# Aurum Vault Admin Interface - Development Dockerfile
+FROM node:18-alpine AS base
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    git \
+    python3 \
+    make \
+    g++ \
+    libc6-compat
+
+WORKDIR /app
+
+# Development stage
+FROM base AS development
+
+# Install nodemon and development tools globally
+RUN npm install -g nodemon tsx prisma
+
+# Copy package files
+COPY package*.json ./
+COPY shared/package*.json ./shared/
+COPY admin-interface/package*.json ./admin-interface/
+
+# Set npm configuration for better reliability and timeout handling
+RUN npm config set fetch-retry-mintimeout 30000 && \
+    npm config set fetch-retry-maxtimeout 300000 && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-timeout 300000 && \
+    npm config set registry https://registry.npmjs.org/ && \
+    npm config set maxsockets 1 && \
+    npm config set progress false
+
+# Install all dependencies with enhanced retry logic
+# Install dependencies with enhanced retry logic and better error handling
+RUN set -e; \
+    for i in 1 2 3 4 5; do \
+        echo "Attempt $i: Installing dependencies..."; \
+        if npm ci --no-audit --no-fund --prefer-offline; then \
+            echo "Dependencies installed successfully on attempt $i"; \
+            break; \
+        else \
+            echo "Attempt $i failed, waiting before retry..."; \
+            if [ $i -eq 5 ]; then \
+                echo "All attempts failed"; \
+                exit 1; \
+            fi; \
+            sleep $((i * 15)); \
+            npm cache clean --force; \
+        fi; \
+    done
+
+# Copy source code
+COPY shared ./shared
+COPY admin-interface ./admin-interface
+
+# Build shared library
+WORKDIR /app/shared
+RUN npm run build
+
+# Switch to admin-interface directory
+WORKDIR /app/admin-interface
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Create non-root user for development
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 aurumvault
+
+# Change ownership of the app directory
+RUN chown -R aurumvault:nodejs /app
+
+USER aurumvault
+
+# Expose ports
+EXPOSE 3002 9229
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3002/api/health || exit 1
+
+# Development command with hot reloading
+CMD ["npm", "run", "dev"]
+
+# Production build stage
+FROM base AS builder
+
+# Copy package files
+COPY package*.json ./
+COPY shared/package*.json ./shared/
+COPY admin-interface/package*.json ./admin-interface/
+
+# Install production dependencies with enhanced retry logic
+RUN set -e; \
+    npm config set fetch-retry-mintimeout 30000 && \
+    npm config set fetch-retry-maxtimeout 300000 && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-timeout 300000 && \
+    npm config set maxsockets 1 && \
+    npm config set progress false; \
+    for i in 1 2 3 4 5; do \
+        echo "Attempt $i: Installing production dependencies..."; \
+        if npm ci --only=production --no-audit --no-fund --prefer-offline; then \
+            echo "Production dependencies installed successfully on attempt $i"; \
+            break; \
+        else \
+            echo "Attempt $i failed, waiting before retry..."; \
+            if [ $i -eq 5 ]; then \
+                echo "All attempts failed"; \
+                exit 1; \
+            fi; \
+            sleep $((i * 15)); \
+            npm cache clean --force; \
+        fi; \
+    done && \
+    npm cache clean --force
+
+# Copy source code
+COPY shared ./shared
+COPY admin-interface ./admin-interface
+
+# Build shared library
+WORKDIR /app/shared
+RUN npm run build
+
+# Build admin interface
+WORKDIR /app/admin-interface
+RUN npm run build
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Production stage
+FROM base AS production
+
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 aurumvault
+
+# Copy built application
+COPY --from=builder --chown=aurumvault:nodejs /app/admin-interface/dist ./dist
+COPY --from=builder --chown=aurumvault:nodejs /app/admin-interface/node_modules ./node_modules
+COPY --from=builder --chown=aurumvault:nodejs /app/admin-interface/package.json ./package.json
+COPY --from=builder --chown=aurumvault:nodejs /app/admin-interface/prisma ./prisma
+
+# Copy shared library
+COPY --from=builder --chown=aurumvault:nodejs /app/shared/dist ./shared/dist
+COPY --from=builder --chown=aurumvault:nodejs /app/shared/package.json ./shared/package.json
+
+USER aurumvault
+
+EXPOSE 3002
+
+ENV NODE_ENV=production
+ENV PORT=3002
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3002/api/health || exit 1
+
+CMD ["node", "dist/server.js"]

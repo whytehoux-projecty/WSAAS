@@ -1,1 +1,0 @@
-self.__NEXT_FONT_MANIFEST='{"pages":{},"app":{"/Volumes/Project Disk/website/financial-business-app/src/websites/banking/novabank/frontend/app/layout":["static/media/4a55e3a359b42768-s.p.woff2","static/media/5a38c412fa3989d0-s.p.woff2","static/media/e4af272ccee01ff0-s.p.woff2"]},"appUsingSizeAdjust":true,"pagesUsingSizeAdjust":false}';

@@ -1,0 +1,166 @@
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">Filter Bill Payees</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="searchUser"
+                                placeholder="Search by user email...">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="categoryFilter">
+                                <option value="">All Categories</option>
+                                <option value="UTILITIES">Utilities</option>
+                                <option value="INTERNET">Internet/TV</option>
+                                <option value="INSURANCE">Insurance</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" onclick="loadBillPayees()">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">Bill Payment Management</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Payee Name</th>
+                                    <th>Account Number</th>
+                                    <th>Category</th>
+                                    <th>User</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody id="billPayeesTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <nav aria-label="Page navigation" id="pagination" class="mt-3"></nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    const limit = 20;
+
+    async function loadBillPayees(page = 1) {
+        currentPage = page;
+        const category = document.getElementById('categoryFilter').value;
+        const search = document.getElementById('searchUser').value;
+
+        const params = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString()
+        });
+
+        if (category) params.append('category', category);
+
+        try {
+            const response = await fetch(`/api/bill-payees?${params.toString()}`);
+            const data = await response.json();
+
+            const tbody = document.getElementById('billPayeesTableBody');
+            tbody.innerHTML = '';
+
+            if (data.billPayees && data.billPayees.length > 0) {
+                data.billPayees.forEach(payee => {
+                    const row = document.createElement('tr');
+                    const categoryBadge = getCategoryBadge(payee.category);
+
+                    row.innerHTML = `
+                    <td><strong>${payee.name}</strong></td>
+                    <td><code>${payee.accountNumber}</code></td>
+                    <td>${categoryBadge}</td>
+                    <td>
+                        <div>${payee.user.firstName} ${payee.user.lastName}</div>
+                        <small class="text-muted">${payee.user.email}</small>
+                    </td>
+                    <td>${new Date(payee.createdAt).toLocaleDateString()}</td>
+                `;
+                    tbody.appendChild(row);
+                });
+
+                renderPagination(data.pagination);
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No bill payees found</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading bill payees:', error);
+            document.getElementById('billPayeesTableBody').innerHTML =
+                '<tr><td colspan="5" class="text-center text-danger">Error loading bill payees</td></tr>';
+        }
+    }
+
+    function getCategoryBadge(category) {
+        const badges = {
+            'UTILITIES': '<span class="badge bg-warning text-dark"><i class="bi bi-lightning-charge"></i> Utilities</span>',
+            'INTERNET': '<span class="badge bg-info"><i class="bi bi-wifi"></i> Internet/TV</span>',
+            'INSURANCE': '<span class="badge bg-success"><i class="bi bi-shield-check"></i> Insurance</span>',
+            'OTHER': '<span class="badge bg-secondary">Other</span>'
+        };
+        return badges[category] || '<span class="badge bg-secondary">' + category + '</span>';
+    }
+
+    function renderPagination(pagination) {
+        const paginationEl = document.getElementById('pagination');
+        if (!pagination || pagination.pages <= 1) {
+            paginationEl.innerHTML = '';
+            return;
+        }
+
+        let html = '<ul class="pagination justify-content-center">';
+
+        // Previous button
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="loadBillPayees(${currentPage - 1}); return false;">Previous</a>
+    </li>`;
+
+        // Page numbers
+        for (let i = 1; i <= pagination.pages; i++) {
+            if (i === 1 || i === pagination.pages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="loadBillPayees(${i}); return false;">${i}</a>
+            </li>`;
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+        }
+
+        // Next button
+        html += `<li class="page-item ${currentPage === pagination.pages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="loadBillPayees(${currentPage + 1}); return false;">Next</a>
+    </li>`;
+
+        html += '</ul>';
+        paginationEl.innerHTML = html;
+    }
+
+    // Load bill payees on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadBillPayees();
+    });
+</script>

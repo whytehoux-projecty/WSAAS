@@ -10,7 +10,7 @@ export const getWireTransfers = async (request: FastifyRequest, reply: FastifyRe
   try {
     const userId = (request as any).user?.userId;
     const query = validationSchemas.wireTransferQuery.parse(request.query);
-    
+
     if (!userId) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
@@ -23,7 +23,7 @@ export const getWireTransfers = async (request: FastifyRequest, reply: FastifyRe
     const result = await WireTransferService.getUserWireTransfers(userId, {
       page,
       limit,
-      status
+      ...(status && { status }),
     });
 
     return reply.status(HTTP_STATUS.OK).send({
@@ -57,7 +57,7 @@ export const getWireTransfer = async (request: FastifyRequest, reply: FastifyRep
   try {
     const userId = (request as any).user?.userId;
     const { wireTransferId } = request.params as { wireTransferId: string };
-    
+
     if (!userId) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
@@ -89,7 +89,7 @@ export const createWireTransfer = async (request: FastifyRequest, reply: Fastify
   try {
     const userId = (request as any).user?.userId;
     const wireTransferData = validationSchemas.createWireTransfer.parse(request.body);
-    
+
     if (!userId) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
@@ -98,7 +98,19 @@ export const createWireTransfer = async (request: FastifyRequest, reply: Fastify
       });
     }
 
-    const result = await WireTransferService.createWireTransfer(userId, wireTransferData);
+    // Map validation schema properties to service expected properties
+    const mappedData = {
+      senderAccountId: wireTransferData.fromAccountId,
+      amount: wireTransferData.amount,
+      currency: wireTransferData.currency,
+      recipientName: wireTransferData.recipientName,
+      recipientBankName: wireTransferData.recipientBank,
+      recipientAccountNumber: wireTransferData.recipientAccount,
+      purposeCode: wireTransferData.purpose,
+      ...(wireTransferData.swiftCode && { recipientBankSwift: wireTransferData.swiftCode }),
+    };
+
+    const result = await WireTransferService.createWireTransfer(userId, mappedData);
 
     return reply.status(HTTP_STATUS.CREATED).send({
       success: true,
@@ -131,7 +143,7 @@ export const cancelWireTransfer = async (request: FastifyRequest, reply: Fastify
   try {
     const userId = (request as any).user?.userId;
     const { wireTransferId } = request.params as { wireTransferId: string };
-    
+
     if (!userId) {
       return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
         success: false,
@@ -162,7 +174,7 @@ export const cancelWireTransfer = async (request: FastifyRequest, reply: Fastify
 export const getWireTransferFees = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { amount, currency } = request.query as { amount: string; currency?: string };
-    
+
     if (!amount || isNaN(Number(amount))) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
         success: false,
@@ -179,7 +191,7 @@ export const getWireTransferFees = async (request: FastifyRequest, reply: Fastif
         amount: Number(amount),
         currency: currency || 'USD',
         fee,
-        total: Number(amount) + fee
+        total: Number(amount) + fee,
       },
     });
   } catch (error) {
@@ -195,7 +207,10 @@ export const getWireTransferFees = async (request: FastifyRequest, reply: Fastif
 /**
  * Generate wire transfer reference
  */
-export const generateWireTransferReference = async (request: FastifyRequest, reply: FastifyReply) => {
+export const generateWireTransferReference = async (
+  request: FastifyRequest,
+  reply: FastifyReply
+) => {
   try {
     const reference = WireTransferService.generateWireTransferReference();
 

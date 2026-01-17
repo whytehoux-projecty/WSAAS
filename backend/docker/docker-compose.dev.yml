@@ -1,0 +1,262 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aurumvault-db-dev
+    environment:
+      POSTGRES_DB: aurumvault_dev
+      POSTGRES_USER: aurumvault_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_password_123}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/schemas:/docker-entrypoint-initdb.d/schemas
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aurumvault_admin -d aurumvault_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: aurumvault-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+    command: redis-server /usr/local/etc/redis/redis.conf --appendonly yes --requirepass ${REDIS_PASSWORD:-dev_redis_123}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Core Banking API (Development)
+  core-api-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api.dev
+      target: development
+    container_name: aurumvault-core-api-dev
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://aurumvault_admin:${DB_PASSWORD:-dev_password_123}@postgres:5432/aurumvault_dev
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev_redis_123}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_key_for_development_only}
+      JWT_EXPIRES_IN: 24h
+      PORT: 3000
+      BCRYPT_ROUNDS: 10
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://localhost:3001,http://localhost:3002}
+      LOG_LEVEL: debug
+      DEBUG: aurumvault:*
+    ports:
+      - "3000:3000"
+      - "9229:9229" # Node.js debugger port
+    volumes:
+      - ../core-api/src:/app/core-api/src:ro
+      - ../shared/src:/app/shared/src:ro
+      - ../core-api/prisma:/app/core-api/prisma:ro
+      - core_api_node_modules:/app/core-api/node_modules
+      - shared_node_modules:/app/shared/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Admin Interface (Development)
+  admin-interface-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.admin.dev
+      target: development
+    container_name: aurumvault-admin-interface-dev
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://aurumvault_admin:${DB_PASSWORD:-dev_password_123}@postgres:5432/aurumvault_dev
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev_redis_123}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_key_for_development_only}
+      PORT: 3002
+      CORS_ORIGIN: ${ADMIN_CORS_ORIGIN:-http://localhost:3002}
+      COOKIE_SECRET: ${COOKIE_SECRET:-dev_cookie_secret_for_development_only}
+      LOG_LEVEL: debug
+      DEBUG: aurumvault:*
+    ports:
+      - "3002:3002"
+      - "9230:9229" # Node.js debugger port (different from core-api)
+    volumes:
+      - ../admin-interface/src:/app/admin-interface/src:ro
+      - ../shared/src:/app/shared/src:ro
+      - ../admin-interface/prisma:/app/admin-interface/prisma:ro
+      - admin_interface_node_modules:/app/admin-interface/node_modules
+      - shared_node_modules:/app/shared/node_modules
+    depends_on:
+      core-api-dev:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # pgAdmin (Database Management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: aurumvault-pgadmin-dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aurumvault.dev
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-dev_admin_123}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+
+  # Redis Commander (Redis Management)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: aurumvault-redis-commander-dev
+    environment:
+      REDIS_HOSTS: local:redis:6379:0:${REDIS_PASSWORD:-dev_redis_123}
+      HTTP_USER: admin
+      HTTP_PASSWORD: ${REDIS_COMMANDER_PASSWORD:-dev_redis_admin_123}
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+
+  # Mailhog (Email Testing)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: aurumvault-mailhog-dev
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+
+  # Nginx (Reverse Proxy for Development)
+  nginx-dev:
+    image: nginx:alpine
+    container_name: aurumvault-nginx-dev
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - core-api-dev
+      - admin-interface-dev
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+
+  # Prometheus (Metrics Collection)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aurumvault-prometheus-dev
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_dev_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+
+  # Grafana (Metrics Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aurumvault-grafana-dev
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-dev_grafana_123}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_dev_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - aurumvault-dev-network
+    restart: unless-stopped
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  pgadmin_dev_data:
+    driver: local
+  prometheus_dev_data:
+    driver: local
+  grafana_dev_data:
+    driver: local
+  core_api_node_modules:
+    driver: local
+  admin_interface_node_modules:
+    driver: local
+  shared_node_modules:
+    driver: local
+
+networks:
+  aurumvault-dev-network:
+    driver: bridge
+    name: aurumvault-dev-network
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16

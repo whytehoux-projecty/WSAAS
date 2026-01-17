@@ -7,10 +7,13 @@ export class AccountService {
   /**
    * Create a new account for a user
    */
-  static async createAccount(userId: string, accountData: {
-    accountType: 'CHECKING' | 'SAVINGS' | 'PREMIUM';
-    initialDeposit?: number;
-  }) {
+  static async createAccount(
+    userId: string,
+    accountData: {
+      accountType: 'CHECKING' | 'SAVINGS' | 'PREMIUM';
+      initialDeposit?: number;
+    }
+  ) {
     // Check if user exists and is verified
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -19,9 +22,9 @@ export class AccountService {
         kycStatus: true,
         status: true,
         _count: {
-          select: { accounts: true }
-        }
-      }
+          select: { accounts: true },
+        },
+      },
     });
 
     if (!user) {
@@ -38,7 +41,9 @@ export class AccountService {
 
     // Check account limit
     if (user._count.accounts >= BUSINESS_RULES.MAX_ACCOUNTS_PER_USER) {
-      throw new Error(`Maximum of ${BUSINESS_RULES.MAX_ACCOUNTS_PER_USER} accounts allowed per user`);
+      throw new Error(
+        `Maximum of ${BUSINESS_RULES.MAX_ACCOUNTS_PER_USER} accounts allowed per user`
+      );
     }
 
     // Generate unique account number
@@ -56,7 +61,7 @@ export class AccountService {
         balance: accountData.initialDeposit || 0,
         currency: 'USD',
         status: 'ACTIVE',
-        ...accountConfig
+        ...accountConfig,
       },
       select: {
         id: true,
@@ -68,8 +73,8 @@ export class AccountService {
         interestRate: true,
         dailyLimit: true,
         monthlyLimit: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     // Create initial deposit transaction if provided
@@ -82,8 +87,8 @@ export class AccountService {
           currency: 'USD',
           status: 'COMPLETED',
           description: 'Initial deposit',
-          reference: `INIT-${Date.now()}`
-        }
+          reference: `INIT-${Date.now()}`,
+        },
       });
     }
 
@@ -110,11 +115,11 @@ export class AccountService {
         updatedAt: true,
         _count: {
           select: {
-            transactions: true
-          }
-        }
+            transactions: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
 
     return accounts;
@@ -146,15 +151,15 @@ export class AccountService {
             id: true,
             firstName: true,
             lastName: true,
-            email: true
-          }
+            email: true,
+          },
         },
         _count: {
           select: {
-            transactions: true
-          }
-        }
-      }
+            transactions: true,
+          },
+        },
+      },
     });
 
     if (!account) {
@@ -167,14 +172,18 @@ export class AccountService {
   /**
    * Update account settings
    */
-  static async updateAccount(accountId: string, userId: string, updateData: {
-    dailyLimit?: number;
-    monthlyLimit?: number;
-    status?: 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
-  }) {
+  static async updateAccount(
+    accountId: string,
+    userId: string,
+    updateData: {
+      dailyLimit?: number;
+      monthlyLimit?: number;
+      status?: 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
+    }
+  ) {
     // Verify account ownership
     const existingAccount = await prisma.account.findFirst({
-      where: { id: accountId, userId }
+      where: { id: accountId, userId },
     });
 
     if (!existingAccount) {
@@ -194,8 +203,8 @@ export class AccountService {
         interestRate: true,
         dailyLimit: true,
         monthlyLimit: true,
-        updatedAt: true
-      }
+        updatedAt: true,
+      },
     });
 
     return account;
@@ -208,7 +217,7 @@ export class AccountService {
     // Verify account ownership
     const account = await prisma.account.findFirst({
       where: { id: accountId, userId },
-      select: { balance: true, status: true }
+      select: { balance: true, status: true },
     });
 
     if (!account) {
@@ -219,11 +228,18 @@ export class AccountService {
       throw new Error('Account is already closed');
     }
 
-    if (account.balance > 0) {
-      throw new Error('Cannot close account with positive balance. Please withdraw all funds first.');
+    const balanceNumber =
+      typeof account.balance === 'object' && 'toNumber' in account.balance
+        ? account.balance.toNumber()
+        : Number(account.balance);
+
+    if (balanceNumber > 0) {
+      throw new Error(
+        'Cannot close account with positive balance. Please withdraw all funds first.'
+      );
     }
 
-    if (account.balance < 0) {
+    if (balanceNumber < 0) {
       throw new Error('Cannot close account with negative balance. Please settle the debt first.');
     }
 
@@ -232,7 +248,7 @@ export class AccountService {
       data: {
         status: 'CLOSED',
         closedAt: new Date(),
-        ...(reason && { closureReason: reason })
+        ...(reason && { closureReason: reason }),
       },
       select: {
         id: true,
@@ -241,8 +257,8 @@ export class AccountService {
         balance: true,
         status: true,
         closedAt: true,
-        updatedAt: true
-      }
+        updatedAt: true,
+      },
     });
 
     return closedAccount;
@@ -263,8 +279,8 @@ export class AccountService {
         status: true,
         interestRate: true,
         dailyLimit: true,
-        monthlyLimit: true
-      }
+        monthlyLimit: true,
+      },
     });
 
     if (!account) {
@@ -282,48 +298,84 @@ export class AccountService {
         status: true,
         description: true,
         reference: true,
-        createdAt: true
+        createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 10
+      take: 10,
     });
 
     // Calculate daily spending
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const todaySpending = await prisma.transaction.aggregate({
       where: {
         accountId,
         type: { in: ['WITHDRAWAL', 'TRANSFER'] },
         status: 'COMPLETED',
-        createdAt: { gte: today }
+        createdAt: { gte: today },
       },
-      _sum: { amount: true }
+      _sum: { amount: true },
     });
 
     // Calculate monthly spending
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    
+
     const monthlySpending = await prisma.transaction.aggregate({
       where: {
         accountId,
         type: { in: ['WITHDRAWAL', 'TRANSFER'] },
         status: 'COMPLETED',
-        createdAt: { gte: monthStart }
+        createdAt: { gte: monthStart },
       },
-      _sum: { amount: true }
+      _sum: { amount: true },
     });
 
     return {
       account,
       recentTransactions,
       spending: {
-        today: Math.abs(todaySpending._sum.amount || 0),
-        month: Math.abs(monthlySpending._sum.amount || 0),
-        dailyRemaining: Math.max(0, account.dailyLimit - Math.abs(todaySpending._sum.amount || 0)),
-        monthlyRemaining: Math.max(0, account.monthlyLimit - Math.abs(monthlySpending._sum.amount || 0))
-      }
+        today: Math.abs(
+          todaySpending._sum.amount &&
+            typeof todaySpending._sum.amount === 'object' &&
+            'toNumber' in todaySpending._sum.amount
+            ? todaySpending._sum.amount.toNumber()
+            : Number(todaySpending._sum.amount || 0)
+        ),
+        month: Math.abs(
+          monthlySpending._sum.amount &&
+            typeof monthlySpending._sum.amount === 'object' &&
+            'toNumber' in monthlySpending._sum.amount
+            ? monthlySpending._sum.amount.toNumber()
+            : Number(monthlySpending._sum.amount || 0)
+        ),
+        dailyRemaining: Math.max(
+          0,
+          (typeof account.dailyLimit === 'object' && 'toNumber' in account.dailyLimit
+            ? account.dailyLimit.toNumber()
+            : Number(account.dailyLimit)) -
+            Math.abs(
+              todaySpending._sum.amount &&
+                typeof todaySpending._sum.amount === 'object' &&
+                'toNumber' in todaySpending._sum.amount
+                ? todaySpending._sum.amount.toNumber()
+                : Number(todaySpending._sum.amount || 0)
+            )
+        ),
+        monthlyRemaining: Math.max(
+          0,
+          (typeof account.monthlyLimit === 'object' && 'toNumber' in account.monthlyLimit
+            ? account.monthlyLimit.toNumber()
+            : Number(account.monthlyLimit)) -
+            Math.abs(
+              monthlySpending._sum.amount &&
+                typeof monthlySpending._sum.amount === 'object' &&
+                'toNumber' in monthlySpending._sum.amount
+                ? monthlySpending._sum.amount.toNumber()
+                : Number(monthlySpending._sum.amount || 0)
+            )
+        ),
+      },
     };
   }
 
@@ -336,12 +388,14 @@ export class AccountService {
 
     do {
       // Generate random digits
-      const randomDigits = Math.floor(Math.random() * 10000000000000000).toString().padStart(14, '0');
+      const randomDigits = Math.floor(Math.random() * 10000000000000000)
+        .toString()
+        .padStart(14, '0');
       accountNumber = `${ACCOUNT_CONFIG.ACCOUNT_NUMBER_PREFIX}${randomDigits}`;
 
       // Check if account number already exists
       const existing = await prisma.account.findUnique({
-        where: { accountNumber }
+        where: { accountNumber },
       });
 
       isUnique = !existing;
@@ -360,21 +414,21 @@ export class AccountService {
           interestRate: ACCOUNT_CONFIG.CHECKING_INTEREST_RATE,
           dailyLimit: 5000,
           monthlyLimit: 50000,
-          overdraftLimit: ACCOUNT_CONFIG.OVERDRAFT_LIMIT
+          overdraftLimit: ACCOUNT_CONFIG.OVERDRAFT_LIMIT,
         };
       case 'SAVINGS':
         return {
           interestRate: ACCOUNT_CONFIG.SAVINGS_INTEREST_RATE,
           dailyLimit: 2000,
           monthlyLimit: 20000,
-          overdraftLimit: 0
+          overdraftLimit: 0,
         };
       case 'PREMIUM':
         return {
           interestRate: ACCOUNT_CONFIG.PREMIUM_INTEREST_RATE,
           dailyLimit: 25000,
           monthlyLimit: 250000,
-          overdraftLimit: -2000
+          overdraftLimit: -2000,
         };
       default:
         throw new Error('Invalid account type');
@@ -401,13 +455,15 @@ export class AccountService {
     if (search) {
       where.OR = [
         { accountNumber: { contains: search, mode: 'insensitive' } },
-        { user: {
-          OR: [
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } }
-          ]
-        }}
+        {
+          user: {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+            ],
+          },
+        },
       ];
     }
 
@@ -430,20 +486,20 @@ export class AccountService {
               id: true,
               firstName: true,
               lastName: true,
-              email: true
-            }
+              email: true,
+            },
           },
           _count: {
             select: {
-              transactions: true
-            }
-          }
+              transactions: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
-        take: limit
+        take: limit,
       }),
-      prisma.account.count({ where })
+      prisma.account.count({ where }),
     ]);
 
     return {
@@ -452,8 +508,8 @@ export class AccountService {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -465,18 +521,27 @@ export class AccountService {
       where: {
         accountType: { in: ['SAVINGS', 'PREMIUM'] },
         status: 'ACTIVE',
-        balance: { gt: 0 }
-      }
+        balance: { gt: 0 },
+      },
     });
 
     const results = [];
 
     for (const account of savingsAccounts) {
       // Calculate daily interest (annual rate / 365)
-      const dailyRate = account.interestRate / 365;
-      const interestAmount = account.balance * dailyRate;
+      const interestRate =
+        typeof account.interestRate === 'object' && 'toNumber' in account.interestRate
+          ? account.interestRate.toNumber()
+          : Number(account.interestRate);
+      const balance =
+        typeof account.balance === 'object' && 'toNumber' in account.balance
+          ? account.balance.toNumber()
+          : Number(account.balance);
+      const dailyRate = interestRate / 365;
+      const interestAmount = balance * dailyRate;
 
-      if (interestAmount > 0.01) { // Only apply if interest is at least 1 cent
+      if (interestAmount > 0.01) {
+        // Only apply if interest is at least 1 cent
         await prisma.$transaction(async (tx: any) => {
           // Create interest transaction
           await tx.transaction.create({
@@ -487,8 +552,8 @@ export class AccountService {
               currency: 'USD',
               status: 'COMPLETED',
               description: 'Interest earned',
-              reference: `INT-${Date.now()}`
-            }
+              reference: `INT-${Date.now()}`,
+            },
           });
 
           // Update account balance
@@ -496,16 +561,16 @@ export class AccountService {
             where: { id: account.id },
             data: {
               balance: {
-                increment: interestAmount
-              }
-            }
+                increment: interestAmount,
+              },
+            },
           });
         });
 
         results.push({
           accountId: account.id,
           accountNumber: account.accountNumber,
-          interestAmount
+          interestAmount,
         });
       }
     }

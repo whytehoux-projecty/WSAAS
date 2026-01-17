@@ -32,18 +32,18 @@ export interface User {
 }
 
 export enum UserStatus {
-  PENDING_VERIFICATION = 'PENDING_VERIFICATION',
-  ACTIVE = 'ACTIVE',
-  SUSPENDED = 'SUSPENDED',
-  CLOSED = 'CLOSED'
+  PENDING_VERIFICATION = "PENDING_VERIFICATION",
+  ACTIVE = "ACTIVE",
+  SUSPENDED = "SUSPENDED",
+  CLOSED = "CLOSED",
 }
 
 export enum KycStatus {
-  PENDING = 'PENDING',
-  IN_REVIEW = 'IN_REVIEW',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
-  EXPIRED = 'EXPIRED'
+  PENDING = "PENDING",
+  IN_REVIEW = "IN_REVIEW",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  EXPIRED = "EXPIRED",
 }
 
 // Account Types
@@ -62,16 +62,16 @@ export interface Account {
 }
 
 export enum AccountType {
-  CHECKING = 'CHECKING',
-  SAVINGS = 'SAVINGS',
-  INVESTMENT = 'INVESTMENT',
-  CREDIT = 'CREDIT'
+  CHECKING = "CHECKING",
+  SAVINGS = "SAVINGS",
+  INVESTMENT = "INVESTMENT",
+  CREDIT = "CREDIT",
 }
 
 export enum AccountStatus {
-  ACTIVE = 'ACTIVE',
-  SUSPENDED = 'SUSPENDED',
-  CLOSED = 'CLOSED'
+  ACTIVE = "ACTIVE",
+  SUSPENDED = "SUSPENDED",
+  CLOSED = "CLOSED",
 }
 
 // Transaction Types
@@ -90,21 +90,21 @@ export interface Transaction {
 }
 
 export enum TransactionType {
-  DEPOSIT = 'DEPOSIT',
-  WITHDRAWAL = 'WITHDRAWAL',
-  TRANSFER = 'TRANSFER',
-  PAYMENT = 'PAYMENT',
-  FEE = 'FEE',
-  INTEREST = 'INTEREST',
-  REFUND = 'REFUND'
+  DEPOSIT = "DEPOSIT",
+  WITHDRAWAL = "WITHDRAWAL",
+  TRANSFER = "TRANSFER",
+  PAYMENT = "PAYMENT",
+  FEE = "FEE",
+  INTEREST = "INTEREST",
+  REFUND = "REFUND",
 }
 
 export enum TransactionStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-  CANCELLED = 'CANCELLED'
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
 }
 
 // Wire Transfer Types
@@ -127,11 +127,11 @@ export interface WireTransfer {
 }
 
 export enum WireTransferStatus {
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-  CANCELLED = 'CANCELLED'
+  PENDING = "PENDING",
+  IN_PROGRESS = "IN_PROGRESS",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
 }
 
 // KYC Document Types
@@ -151,20 +151,20 @@ export interface KycDocument {
 }
 
 export enum DocumentType {
-  PASSPORT = 'PASSPORT',
-  DRIVERS_LICENSE = 'DRIVERS_LICENSE',
-  NATIONAL_ID = 'NATIONAL_ID',
-  UTILITY_BILL = 'UTILITY_BILL',
-  BANK_STATEMENT = 'BANK_STATEMENT',
-  PROOF_OF_INCOME = 'PROOF_OF_INCOME',
-  PROOF_OF_ADDRESS = 'PROOF_OF_ADDRESS'
+  PASSPORT = "PASSPORT",
+  DRIVERS_LICENSE = "DRIVERS_LICENSE",
+  NATIONAL_ID = "NATIONAL_ID",
+  UTILITY_BILL = "UTILITY_BILL",
+  BANK_STATEMENT = "BANK_STATEMENT",
+  PROOF_OF_INCOME = "PROOF_OF_INCOME",
+  PROOF_OF_ADDRESS = "PROOF_OF_ADDRESS",
 }
 
 export enum DocumentStatus {
-  PENDING = 'PENDING',
-  IN_REVIEW = 'IN_REVIEW',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED'
+  PENDING = "PENDING",
+  IN_REVIEW = "IN_REVIEW",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
 }
 
 // Session Types
@@ -202,7 +202,7 @@ export interface JwtPayload {
 
 export interface RefreshTokenPayload {
   userId: string;
-  type: 'refresh';
+  type: "refresh";
   iat?: number;
   exp?: number;
 }
@@ -263,11 +263,11 @@ export interface Notification {
 }
 
 export enum NotificationType {
-  TRANSACTION = 'TRANSACTION',
-  ACCOUNT = 'ACCOUNT',
-  SECURITY = 'SECURITY',
-  KYC = 'KYC',
-  SYSTEM = 'SYSTEM'
+  TRANSACTION = "TRANSACTION",
+  ACCOUNT = "ACCOUNT",
+  SECURITY = "SECURITY",
+  KYC = "KYC",
+  SYSTEM = "SYSTEM",
 }
 
 // External Service Types
@@ -307,20 +307,20 @@ export interface AdminUser {
 }
 
 export enum AdminRole {
-  SUPER_ADMIN = 'SUPER_ADMIN',
-  ADMIN = 'ADMIN',
-  MODERATOR = 'MODERATOR',
-  VIEWER = 'VIEWER'
+  SUPER_ADMIN = "SUPER_ADMIN",
+  ADMIN = "ADMIN",
+  MODERATOR = "MODERATOR",
+  VIEWER = "VIEWER",
 }
 
 // System Health Types
 export interface HealthCheck {
-  status: 'healthy' | 'unhealthy';
+  status: "healthy" | "unhealthy";
   timestamp: string;
   services: {
-    database: 'connected' | 'disconnected';
-    cache: 'connected' | 'disconnected';
-    api: 'running' | 'stopped';
+    database: "connected" | "disconnected";
+    cache: "connected" | "disconnected";
+    api: "running" | "stopped";
   };
   uptime?: number;
   version?: string;

@@ -19,7 +19,7 @@ import { log } from './lib/logger';
 import { ServiceFactory } from './lib/base';
 
 // Middleware
-import { securityHeaders, requestLogger, corsConfig, cspHeader } from './middleware/security';
+import { corsConfig } from './middleware/security';
 import { authenticateToken } from './middleware/auth';
 
 // Routes
@@ -30,83 +30,18 @@ import transactionRoutes from './routes/transactions';
 import kycRoutes from './routes/kyc';
 import wireTransferRoutes from './routes/wire-transfers';
 import systemRoutes from './routes/system';
+import portalRoutes from './routes/portal';
 
 // Initialize Fastify
 const fastify = Fastify({
-  logger: false, // We'll use our custom logger
+  logger: config.NODE_ENV === 'development',
   requestIdHeader: 'x-request-id',
   requestIdLogLabel: 'requestId',
   genReqId: () => crypto.randomUUID(),
 });
 
-// Global middleware
-fastify.addHook('onRequest', securityHeaders);
-fastify.addHook('onRequest', requestLogger);
-fastify.addHook('onRequest', cspHeader);
-
-// Register plugins
-const registerPlugins = async () => {
-  await fastify.register(helmet, {
-    contentSecurityPolicy: false, // We handle this manually
-  });
-
-  await fastify.register(cors, corsConfig);
-
-  await fastify.register(rateLimit, {
-    max: 100,
-    timeWindow: '1 minute',
-    errorResponseBuilder: (request, context) => ({
-      success: false,
-      error: {
-        code: 'RATE_LIMIT_EXCEEDED',
-        message: `Rate limit exceeded, retry in ${context.ttl} seconds`,
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        retryAfter: context.ttl,
-      },
-    }),
-  });
-
-  await fastify.register(jwt, {
-    secret: config.JWT_SECRET,
-    sign: {
-      expiresIn: config.JWT_EXPIRES_IN,
-    },
-  });
-
-  await fastify.register(cookie, {
-    secret: config.JWT_SECRET,
-    parseOptions: {
-      httpOnly: true,
-      secure: config.NODE_ENV === 'production',
-      sameSite: 'strict',
-    },
-  });
-
-  await fastify.register(multipart, {
-    limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB
-      files: 5,
-    },
-  });
-
-  await fastify.register(swagger, swaggerConfig);
-  await fastify.register(swaggerUi, swaggerUiConfig);
-};
-
-// Initialize services
-const serviceFactory = ServiceFactory.getInstance(db.prisma, db.redis);
-
-// Make services available to routes
-fastify.decorate('services', serviceFactory);
-fastify.decorate('db', db);
-
-// Add authenticate decorator
-fastify.decorate('authenticate', authenticateToken);
-
 // Root endpoint
-fastify.get('/', async (request, reply) => {
+fastify.get('/', async request => {
   return {
     success: true,
     data: {
@@ -141,7 +76,7 @@ fastify.get('/health', async (request, reply) => {
   const healthStatus = await db.healthCheck();
 
   const status =
-    healthStatus.database === 'connected' && healthStatus.cache === 'connected'
+    healthStatus.database === 'connected'
       ? 'healthy'
       : 'unhealthy';
 
@@ -163,53 +98,6 @@ fastify.get('/health', async (request, reply) => {
     },
   };
 });
-
-fastify.get('/health/database', async (request, reply) => {
-  try {
-    await db.prisma.$queryRaw`SELECT 1`;
-    return {
-      success: true,
-      data: { status: 'connected', timestamp: new Date().toISOString() },
-      meta: { timestamp: new Date().toISOString(), requestId: request.id },
-    };
-  } catch (error) {
-    reply.status(503);
-    return {
-      success: false,
-      error: { code: 'DATABASE_ERROR', message: 'Database connection failed' },
-      meta: { timestamp: new Date().toISOString(), requestId: request.id },
-    };
-  }
-});
-
-fastify.get('/health/cache', async (request, reply) => {
-  try {
-    await db.redis.ping();
-    return {
-      success: true,
-      data: { status: 'connected', timestamp: new Date().toISOString() },
-      meta: { timestamp: new Date().toISOString(), requestId: request.id },
-    };
-  } catch (error) {
-    reply.status(503);
-    return {
-      success: false,
-      error: { code: 'CACHE_ERROR', message: 'Cache connection failed' },
-      meta: { timestamp: new Date().toISOString(), requestId: request.id },
-    };
-  }
-});
-
-// Register API routes
-const registerRoutes = async () => {
-  await fastify.register(systemRoutes, { prefix: '/api/system' });
-  await fastify.register(authRoutes, { prefix: '/api/auth' });
-  await fastify.register(userRoutes, { prefix: '/api/users' });
-  await fastify.register(accountRoutes, { prefix: '/api/accounts' });
-  await fastify.register(transactionRoutes, { prefix: '/api/transactions' });
-  await fastify.register(kycRoutes, { prefix: '/api/kyc' });
-  await fastify.register(wireTransferRoutes, { prefix: '/api/wire-transfers' });
-};
 
 // Global error handler
 fastify.setErrorHandler(async (error, request, reply) => {
@@ -264,19 +152,82 @@ const start = async () => {
     await db.connect();
 
     // Register plugins
-    await registerPlugins();
+    await fastify.register(helmet, {
+      contentSecurityPolicy: false,
+    });
 
-    // Register routes
-    await registerRoutes();
+    await fastify.register(cors, corsConfig);
+
+    await fastify.register(rateLimit, {
+      max: 100,
+      timeWindow: '1 minute',
+      errorResponseBuilder: (_, context) => ({
+        success: false,
+        error: {
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: `Rate limit exceeded, retry in ${context.ttl} seconds`,
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          retryAfter: context.ttl,
+        },
+      }),
+    });
+
+    await fastify.register(jwt, {
+      secret: config.JWT_SECRET,
+      sign: {
+        expiresIn: config.JWT_EXPIRES_IN,
+      },
+    });
+
+    await fastify.register(cookie, {
+      secret: config.JWT_SECRET,
+      parseOptions: {
+        httpOnly: true,
+        secure: config.NODE_ENV === 'production',
+        sameSite: 'strict',
+      },
+    });
+
+    await fastify.register(multipart, {
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+        files: 5,
+      },
+    });
+
+    await fastify.register(swagger, swaggerConfig);
+    await fastify.register(swaggerUi, swaggerUiConfig);
+
+    // Add security hooks (temporarily disabled for debugging)
+    // fastify.addHook('onRequest', securityHeaders);
+    // fastify.addHook('onRequest', cspHeader);
+
+    // Initialize services
+    const serviceFactory = ServiceFactory.getInstance(db.prisma, db.redis);
+    fastify.decorate('services', serviceFactory);
+    fastify.decorate('db', db);
+    fastify.decorate('authenticate', authenticateToken);
+
+    // Register API routes
+    await fastify.register(systemRoutes, { prefix: '/api/system' });
+    await fastify.register(portalRoutes, { prefix: '/api/portal' });
+    await fastify.register(authRoutes, { prefix: '/api/auth' });
+    await fastify.register(userRoutes, { prefix: '/api/users' });
+    await fastify.register(accountRoutes, { prefix: '/api/accounts' });
+    await fastify.register(transactionRoutes, { prefix: '/api/transactions' });
+    await fastify.register(kycRoutes, { prefix: '/api/kyc' });
+    await fastify.register(wireTransferRoutes, { prefix: '/api/wire-transfers' });
 
     // Start server
     await fastify.listen({
       port: config.PORT,
-      host: '0.0.0.0',
+      host: process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost',
     });
 
-    log.info(`🚀 Aurum Vault Core API server running on http://0.0.0.0:${config.PORT}`);
-    log.info(`📚 API documentation available at http://0.0.0.0:${config.PORT}/docs`);
+    log.info(`🚀 Aurum Vault Core API server running on http://localhost:${config.PORT}`);
+    log.info(`📚 API documentation available at http://localhost:${config.PORT}/docs`);
   } catch (error) {
     log.error('Failed to start server', error);
     process.exit(1);

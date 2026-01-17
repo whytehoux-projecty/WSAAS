@@ -1,7 +1,7 @@
 // Re-export all utilities for easy importing
-export * from './date';
-export * from './generators';
-export * from './financial';
+export * from "./date";
+export * from "./generators";
+export * from "./financial";
 
 // Additional utility functions
 
@@ -9,7 +9,7 @@ export * from './financial';
  * Sleep/delay function for async operations
  */
 export const sleep = (ms: number): Promise<void> => {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
 /**
@@ -18,25 +18,25 @@ export const sleep = (ms: number): Promise<void> => {
 export const retry = async <T>(
   fn: () => Promise<T>,
   maxAttempts: number = 3,
-  baseDelay: number = 1000
+  baseDelay: number = 1000,
 ): Promise<T> => {
   let lastError: Error;
-  
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error as Error;
-      
+
       if (attempt === maxAttempts) {
         throw lastError;
       }
-      
+
       const delay = baseDelay * Math.pow(2, attempt - 1);
       await sleep(delay);
     }
   }
-  
+
   throw lastError!;
 };
 
@@ -45,10 +45,10 @@ export const retry = async <T>(
  */
 export const debounce = <T extends (...args: any[]) => any>(
   func: T,
-  wait: number
+  wait: number,
 ): ((...args: Parameters<T>) => void) => {
   let timeout: NodeJS.Timeout;
-  
+
   return (...args: Parameters<T>) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
@@ -60,15 +60,15 @@ export const debounce = <T extends (...args: any[]) => any>(
  */
 export const throttle = <T extends (...args: any[]) => any>(
   func: T,
-  limit: number
+  limit: number,
 ): ((...args: Parameters<T>) => void) => {
   let inThrottle: boolean;
-  
+
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args);
       inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
+      setTimeout(() => (inThrottle = false), limit);
     }
   };
 };
@@ -77,19 +77,19 @@ export const throttle = <T extends (...args: any[]) => any>(
  * Deep clone an object
  */
 export const deepClone = <T>(obj: T): T => {
-  if (obj === null || typeof obj !== 'object') {
+  if (obj === null || typeof obj !== "object") {
     return obj;
   }
-  
+
   if (obj instanceof Date) {
     return new Date(obj.getTime()) as unknown as T;
   }
-  
+
   if (obj instanceof Array) {
-    return obj.map(item => deepClone(item)) as unknown as T;
+    return obj.map((item) => deepClone(item)) as unknown as T;
   }
-  
-  if (typeof obj === 'object') {
+
+  if (typeof obj === "object") {
     const clonedObj = {} as T;
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
@@ -98,7 +98,7 @@ export const deepClone = <T>(obj: T): T => {
     }
     return clonedObj;
   }
-  
+
   return obj;
 };
 
@@ -107,7 +107,7 @@ export const deepClone = <T>(obj: T): T => {
  */
 export const isEmpty = (obj: any): boolean => {
   if (obj == null) return true;
-  if (Array.isArray(obj) || typeof obj === 'string') return obj.length === 0;
+  if (Array.isArray(obj) || typeof obj === "string") return obj.length === 0;
   if (obj instanceof Map || obj instanceof Set) return obj.size === 0;
   return Object.keys(obj).length === 0;
 };
@@ -117,10 +117,10 @@ export const isEmpty = (obj: any): boolean => {
  */
 export const omit = <T extends Record<string, any>, K extends keyof T>(
   obj: T,
-  keys: K[]
+  keys: K[],
 ): Omit<T, K> => {
   const result = { ...obj };
-  keys.forEach(key => delete result[key]);
+  keys.forEach((key) => delete result[key]);
   return result;
 };
 
@@ -129,10 +129,10 @@ export const omit = <T extends Record<string, any>, K extends keyof T>(
  */
 export const pick = <T extends Record<string, any>, K extends keyof T>(
   obj: T,
-  keys: K[]
+  keys: K[],
 ): Pick<T, K> => {
   const result = {} as Pick<T, K>;
-  keys.forEach(key => {
+  keys.forEach((key) => {
     if (key in obj) {
       result[key] = obj[key];
     }
@@ -151,8 +151,9 @@ export const capitalize = (str: string): string => {
  * Convert string to title case
  */
 export const toTitleCase = (str: string): string => {
-  return str.replace(/\w\S*/g, (txt) => 
-    txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+  return str.replace(
+    /\w\S*/g,
+    (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(),
   );
 };
 
@@ -160,7 +161,7 @@ export const toTitleCase = (str: string): string => {
  * Convert camelCase to snake_case
  */
 export const camelToSnake = (str: string): string => {
-  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 };
 
 /**
@@ -173,7 +174,11 @@ export const snakeToCamel = (str: string): string => {
 /**
  * Truncate string with ellipsis
  */
-export const truncate = (str: string, length: number, suffix: string = '...'): string => {
+export const truncate = (
+  str: string,
+  length: number,
+  suffix: string = "...",
+): string => {
   if (str.length <= length) return str;
   return str.substring(0, length - suffix.length) + suffix;
 };
@@ -185,9 +190,9 @@ export const slugify = (str: string): string => {
   return str
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 };
 
 /**
@@ -210,10 +215,7 @@ export const isValidPhone = (phone: string): boolean => {
  * Sanitize string for SQL/XSS prevention
  */
 export const sanitizeString = (str: string): string => {
-  return str
-    .replace(/[<>]/g, '')
-    .replace(/['"]/g, '')
-    .trim();
+  return str.replace(/[<>]/g, "").replace(/['"]/g, "").trim();
 };
 
 /**
@@ -221,38 +223,46 @@ export const sanitizeString = (str: string): string => {
  */
 export const generateRandomColor = (): string => {
   const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+    "#FF6B6B",
+    "#4ECDC4",
+    "#45B7D1",
+    "#96CEB4",
+    "#FFEAA7",
+    "#DDA0DD",
+    "#98D8C8",
+    "#F7DC6F",
+    "#BB8FCE",
+    "#85C1E9",
   ];
   const randomIndex = Math.floor(Math.random() * colors.length);
-  return colors[randomIndex] || '#FF6B6B'; // Fallback color
+  return colors[randomIndex] || "#FF6B6B"; // Fallback color
 };
 
 /**
  * Format file size
  */
 export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
-  
+  if (bytes === 0) return "0 Bytes";
+
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
 /**
  * Get file extension
  */
 export const getFileExtension = (filename: string): string => {
-  return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
+  return filename.slice(((filename.lastIndexOf(".") - 1) >>> 0) + 2);
 };
 
 /**
  * Check if file is image
  */
 export const isImageFile = (filename: string): boolean => {
-  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'];
+  const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"];
   const extension = getFileExtension(filename).toLowerCase();
   return imageExtensions.includes(extension);
 };
@@ -261,7 +271,7 @@ export const isImageFile = (filename: string): boolean => {
  * Check if file is document
  */
 export const isDocumentFile = (filename: string): boolean => {
-  const docExtensions = ['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt'];
+  const docExtensions = ["pdf", "doc", "docx", "txt", "rtf", "odt"];
   const extension = getFileExtension(filename).toLowerCase();
   return docExtensions.includes(extension);
 };
@@ -269,55 +279,73 @@ export const isDocumentFile = (filename: string): boolean => {
 /**
  * Parse user agent string
  */
-export const parseUserAgent = (userAgent: string): {
+export const parseUserAgent = (
+  userAgent: string,
+): {
   browser: string;
   os: string;
   device: string;
 } => {
-  const browser = userAgent.includes('Chrome') ? 'Chrome' :
-                 userAgent.includes('Firefox') ? 'Firefox' :
-                 userAgent.includes('Safari') ? 'Safari' :
-                 userAgent.includes('Edge') ? 'Edge' : 'Unknown';
-  
-  const os = userAgent.includes('Windows') ? 'Windows' :
-            userAgent.includes('Mac') ? 'macOS' :
-            userAgent.includes('Linux') ? 'Linux' :
-            userAgent.includes('Android') ? 'Android' :
-            userAgent.includes('iOS') ? 'iOS' : 'Unknown';
-  
-  const device = userAgent.includes('Mobile') ? 'Mobile' :
-                userAgent.includes('Tablet') ? 'Tablet' : 'Desktop';
-  
+  const browser = userAgent.includes("Chrome")
+    ? "Chrome"
+    : userAgent.includes("Firefox")
+      ? "Firefox"
+      : userAgent.includes("Safari")
+        ? "Safari"
+        : userAgent.includes("Edge")
+          ? "Edge"
+          : "Unknown";
+
+  const os = userAgent.includes("Windows")
+    ? "Windows"
+    : userAgent.includes("Mac")
+      ? "macOS"
+      : userAgent.includes("Linux")
+        ? "Linux"
+        : userAgent.includes("Android")
+          ? "Android"
+          : userAgent.includes("iOS")
+            ? "iOS"
+            : "Unknown";
+
+  const device = userAgent.includes("Mobile")
+    ? "Mobile"
+    : userAgent.includes("Tablet")
+      ? "Tablet"
+      : "Desktop";
+
   return { browser, os, device };
 };
 
 /**
  * Get client IP from request headers
  */
-export const getClientIP = (headers: Record<string, string | string[] | undefined>): string => {
-  const forwarded = headers['x-forwarded-for'];
-  const realIP = headers['x-real-ip'];
-  const remoteAddr = headers['remote-addr'];
-  
+export const getClientIP = (
+  headers: Record<string, string | string[] | undefined>,
+): string => {
+  const forwarded = headers["x-forwarded-for"];
+  const realIP = headers["x-real-ip"];
+  const remoteAddr = headers["remote-addr"];
+
   if (forwarded) {
     const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-    if (ips && typeof ips === 'string') {
-      const ipList = ips.split(',');
+    if (ips && typeof ips === "string") {
+      const ipList = ips.split(",");
       if (ipList.length > 0 && ipList[0]) {
         return ipList[0].trim();
       }
     }
   }
-  
+
   if (realIP) {
-    return Array.isArray(realIP) ? realIP[0] || 'unknown' : realIP;
+    return Array.isArray(realIP) ? realIP[0] || "unknown" : realIP;
   }
-  
+
   if (remoteAddr) {
-    return Array.isArray(remoteAddr) ? remoteAddr[0] || 'unknown' : remoteAddr;
+    return Array.isArray(remoteAddr) ? remoteAddr[0] || "unknown" : remoteAddr;
   }
-  
-  return 'unknown';
+
+  return "unknown";
 };
 
 /**
@@ -327,7 +355,7 @@ export const simpleHash = (str: string): number => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
   return Math.abs(hash);
@@ -354,7 +382,10 @@ export const safeJsonParse = <T>(str: string, defaultValue: T): T => {
 /**
  * Safe JSON stringify
  */
-export const safeJsonStringify = (obj: any, defaultValue: string = '{}'): string => {
+export const safeJsonStringify = (
+  obj: any,
+  defaultValue: string = "{}",
+): string => {
   try {
     return JSON.stringify(obj);
   } catch {
@@ -367,26 +398,28 @@ export const safeJsonStringify = (obj: any, defaultValue: string = '{}'): string
  */
 export const objectToQueryString = (obj: Record<string, any>): string => {
   const params = new URLSearchParams();
-  
+
   Object.entries(obj).forEach(([key, value]) => {
     if (value !== null && value !== undefined) {
       params.append(key, String(value));
     }
   });
-  
+
   return params.toString();
 };
 
 /**
  * Convert query string to object
  */
-export const queryStringToObject = (queryString: string): Record<string, string> => {
+export const queryStringToObject = (
+  queryString: string,
+): Record<string, string> => {
   const params = new URLSearchParams(queryString);
   const obj: Record<string, string> = {};
-  
+
   params.forEach((value, key) => {
     obj[key] = value;
   });
-  
+
   return obj;
 };

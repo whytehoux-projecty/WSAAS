@@ -1,6 +1,5 @@
-import { PrismaClient, WireTransfer, Account, User, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { ERROR_CODES, WIRE_TRANSFER_CONFIG } from '@shared/index';
-import { addBusinessDays, format } from 'date-fns';
 import crypto from 'crypto';
 
 const prisma = new PrismaClient();
@@ -9,18 +8,21 @@ export class WireTransferService {
   /**
    * Create a wire transfer
    */
-  static async createWireTransfer(userId: string, transferData: {
-    senderAccountId: string;
-    amount: number;
-    currency?: string;
-    recipientName: string;
-    recipientBankName: string;
-    recipientBankSwift?: string;
-    recipientAccountNumber: string;
-    recipientAddress?: string;
-    purposeCode?: string;
-    regulatoryInfo?: string;
-  }) {
+  static async createWireTransfer(
+    userId: string,
+    transferData: {
+      senderAccountId: string;
+      amount: number;
+      currency?: string;
+      recipientName: string;
+      recipientBankName: string;
+      recipientBankSwift?: string;
+      recipientAccountNumber: string;
+      recipientAddress?: string;
+      purposeCode?: string;
+      regulatoryInfo?: string;
+    }
+  ) {
     const {
       senderAccountId,
       amount,
@@ -31,7 +33,7 @@ export class WireTransferService {
       recipientAccountNumber,
       recipientAddress,
       purposeCode,
-      regulatoryInfo
+      regulatoryInfo,
     } = transferData;
 
     // Validate amount
@@ -46,7 +48,7 @@ export class WireTransferService {
     // Verify account ownership and status
     const account = await prisma.account.findFirst({
       where: { id: senderAccountId, userId, status: 'ACTIVE' },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!account) {
@@ -87,9 +89,9 @@ export class WireTransferService {
           metadata: JSON.stringify({
             userId,
             wireTransferAmount: amount,
-            wireTransferFee: fee
-          })
-        }
+            wireTransferFee: fee,
+          }),
+        },
       });
 
       // Create wire transfer record
@@ -106,8 +108,8 @@ export class WireTransferService {
           regulatoryInfo,
           fee,
           complianceStatus: 'PENDING',
-          estimatedArrival: this.calculateEstimatedArrival(currency)
-        }
+          estimatedArrival: this.calculateEstimatedArrival(currency),
+        },
       });
 
       // Deduct amount from sender account
@@ -115,8 +117,8 @@ export class WireTransferService {
         where: { id: senderAccountId },
         data: {
           balance: { decrement: totalAmount },
-          lastTransactionAt: new Date()
-        }
+          lastTransactionAt: new Date(),
+        },
       });
 
       // Create audit log
@@ -131,11 +133,11 @@ export class WireTransferService {
             currency,
             recipientName,
             recipientBankName,
-            reference
+            reference,
           }),
           category: 'TRANSACTION',
-          severity: 'INFO'
-        }
+          severity: 'INFO',
+        },
       });
 
       return { transaction, wireTransfer };
@@ -147,16 +149,19 @@ export class WireTransferService {
   /**
    * Get wire transfers for user
    */
-  static async getUserWireTransfers(userId: string, options: {
-    page?: number;
-    limit?: number;
-    status?: string;
-  } = {}) {
+  static async getUserWireTransfers(
+    userId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      status?: string;
+    } = {}
+  ) {
     const { page = 1, limit = 20, status } = options;
     const skip = (page - 1) * limit;
 
     const where: any = {
-      senderAccount: { userId }
+      senderAccount: { userId },
     };
 
     if (status) {
@@ -175,21 +180,21 @@ export class WireTransferService {
               status: true,
               reference: true,
               createdAt: true,
-              updatedAt: true
-            }
+              updatedAt: true,
+            },
           },
           senderAccount: {
             select: {
               accountNumber: true,
-              accountType: true
-            }
-          }
+              accountType: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
-        take: limit
+        take: limit,
       }),
-      prisma.wireTransfer.count({ where })
+      prisma.wireTransfer.count({ where }),
     ]);
 
     return {
@@ -198,8 +203,8 @@ export class WireTransferService {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -210,7 +215,7 @@ export class WireTransferService {
     const wireTransfer = await prisma.wireTransfer.findFirst({
       where: {
         id: wireTransferId,
-        senderAccount: { userId }
+        senderAccount: { userId },
       },
       include: {
         transaction: {
@@ -224,16 +229,16 @@ export class WireTransferService {
             processedAt: true,
             failureReason: true,
             createdAt: true,
-            updatedAt: true
-          }
+            updatedAt: true,
+          },
         },
         senderAccount: {
           select: {
             accountNumber: true,
-            accountType: true
-          }
-        }
-      }
+            accountType: true,
+          },
+        },
+      },
     });
 
     if (!wireTransfer) {
@@ -250,12 +255,12 @@ export class WireTransferService {
     const wireTransfer = await prisma.wireTransfer.findFirst({
       where: {
         id: wireTransferId,
-        senderAccount: { userId }
+        senderAccount: { userId },
       },
       include: {
         transaction: true,
-        senderAccount: true
-      }
+        senderAccount: true,
+      },
     });
 
     if (!wireTransfer) {
@@ -273,16 +278,16 @@ export class WireTransferService {
         where: { id: wireTransfer.transactionId },
         data: {
           status: 'CANCELLED',
-          failureReason: 'Cancelled by user'
-        }
+          failureReason: 'Cancelled by user',
+        },
       });
 
       // Refund amount to sender account
       await tx.account.update({
         where: { id: wireTransfer.senderAccountId },
         data: {
-          balance: { increment: wireTransfer.transaction.amount }
-        }
+          balance: { increment: wireTransfer.transaction.amount },
+        },
       });
 
       // Create audit log
@@ -294,11 +299,11 @@ export class WireTransferService {
           entityId: wireTransferId,
           details: JSON.stringify({
             reference: wireTransfer.transaction.reference,
-            refundAmount: wireTransfer.transaction.amount
+            refundAmount: wireTransfer.transaction.amount,
           }),
           category: 'TRANSACTION',
-          severity: 'INFO'
-        }
+          severity: 'INFO',
+        },
       });
 
       return wireTransfer;
@@ -354,7 +359,8 @@ export class WireTransferService {
     while (daysAdded < businessDays) {
       now.setDate(now.getDate() + 1);
       const dayOfWeek = now.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday or Saturday
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        // Not Sunday or Saturday
         daysAdded++;
       }
     }
@@ -376,21 +382,21 @@ export class WireTransferService {
         senderAccountId: accountId,
         createdAt: {
           gte: today,
-          lt: tomorrow
+          lt: tomorrow,
         },
         transaction: {
-          status: { in: ['PENDING', 'COMPLETED'] }
-        }
+          status: { in: ['PENDING', 'COMPLETED'] },
+        },
       },
       include: {
         transaction: {
-          select: { amount: true }
-        }
-      }
+          select: { amount: true },
+        },
+      },
     });
 
     const todayTotal = todayTransfers.reduce(
-      (sum, transfer) => sum + Number(transfer.transaction.amount),
+      (sum: number, transfer: any) => sum + Number(transfer.transaction.amount),
       0
     );
 
@@ -412,33 +418,33 @@ export class WireTransferService {
         where: {
           senderAccount: { userId },
           createdAt: { gte: today },
-          transaction: { status: { in: ['PENDING', 'COMPLETED'] } }
+          transaction: { status: { in: ['PENDING', 'COMPLETED'] } },
         },
-        include: { transaction: { select: { amount: true } } }
+        include: { transaction: { select: { amount: true } } },
       }),
       prisma.wireTransfer.findMany({
         where: {
           senderAccount: { userId },
           createdAt: { gte: thisMonth },
-          transaction: { status: { in: ['PENDING', 'COMPLETED'] } }
+          transaction: { status: { in: ['PENDING', 'COMPLETED'] } },
         },
-        include: { transaction: { select: { amount: true } } }
+        include: { transaction: { select: { amount: true } } },
       }),
       prisma.wireTransfer.count({
         where: {
           senderAccount: { userId },
-          transaction: { status: 'COMPLETED' }
-        }
-      })
+          transaction: { status: 'COMPLETED' },
+        },
+      }),
     ]);
 
     const todayAmount = todayTransfers.reduce(
-      (sum, transfer) => sum + Number(transfer.transaction.amount),
+      (sum: number, transfer: any) => sum + Number(transfer.transaction.amount),
       0
     );
 
     const monthAmount = monthTransfers.reduce(
-      (sum, transfer) => sum + Number(transfer.transaction.amount),
+      (sum: number, transfer: any) => sum + Number(transfer.transaction.amount),
       0
     );
 
@@ -446,15 +452,15 @@ export class WireTransferService {
       today: {
         count: todayTransfers.length,
         amount: todayAmount,
-        remainingLimit: Math.max(0, WIRE_TRANSFER_CONFIG.DAILY_LIMIT - todayAmount)
+        remainingLimit: Math.max(0, WIRE_TRANSFER_CONFIG.DAILY_LIMIT - todayAmount),
       },
       thisMonth: {
         count: monthTransfers.length,
-        amount: monthAmount
+        amount: monthAmount,
       },
       total: {
-        count: totalTransfers
-      }
+        count: totalTransfers,
+      },
     };
   }
 }

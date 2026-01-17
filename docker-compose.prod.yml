@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aurumvault-db-prod
+    environment:
+      POSTGRES_USER: ${DB_USER:-aurumvault_prod}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: aurumvault
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - aurumvault-network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-aurumvault_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: aurumvault-redis-prod
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - aurumvault-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Backend Core API
+  backend:
+    build:
+      context: ./backend/core-api
+      dockerfile: Dockerfile.prod
+    container_name: aurumvault-api-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://${DB_USER:-aurumvault_prod}:${DB_PASSWORD}@postgres:5432/aurumvault
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - CORPORATE_URL=${CORPORATE_URL}
+      - PORTAL_URL=${PORTAL_URL}
+      - ADMIN_URL=${ADMIN_URL}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aurumvault-network
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs/backend:/app/logs
+    restart: always
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # E-Banking Portal
+  portal:
+    build:
+      context: ./e-banking-portal
+      dockerfile: Dockerfile.prod
+    container_name: aurumvault-portal-prod
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${PUBLIC_API_URL}
+      - NEXT_PUBLIC_CORPORATE_URL=${CORPORATE_URL}
+      - PORT=4000
+    ports:
+      - "4000:4000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - aurumvault-network
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Admin Interface
+  admin:
+    build:
+      context: ./admin-interface
+      dockerfile: Dockerfile.prod
+    container_name: aurumvault-admin-prod
+    environment:
+      - NODE_ENV=production
+      - API_URL=http://backend:3001
+      - PORT=3003
+      - SESSION_SECRET=${SESSION_SECRET}
+      - CORPORATE_URL=${CORPORATE_URL}
+      - PORTAL_URL=${PORTAL_URL}
+    ports:
+      - "3003:3003"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - aurumvault-network
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Cloudflare Tunnel (Optional - uncomment to use)
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: aurumvault-tunnel
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+  #   networks:
+  #     - aurumvault-network
+  #   restart: always
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  aurumvault-network:
+    driver: bridge

@@ -3,11 +3,11 @@
  */
 export const formatCurrency = (
   amount: number,
-  currency: string = 'USD',
-  locale: string = 'en-US'
+  currency: string = "USD",
+  locale: string = "en-US",
 ): string => {
   return new Intl.NumberFormat(locale, {
-    style: 'currency',
+    style: "currency",
     currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -20,7 +20,7 @@ export const formatCurrency = (
 export const formatAmount = (
   amount: number,
   decimals: number = 2,
-  locale: string = 'en-US'
+  locale: string = "en-US",
 ): string => {
   return new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
@@ -33,13 +33,13 @@ export const formatAmount = (
  */
 export const parseCurrency = (currencyString: string): number => {
   // Remove currency symbols, spaces, and commas
-  const cleanString = currencyString.replace(/[$,\s]/g, '');
+  const cleanString = currencyString.replace(/[$,\s]/g, "");
   const amount = parseFloat(cleanString);
-  
+
   if (isNaN(amount)) {
-    throw new Error('Invalid currency format');
+    throw new Error("Invalid currency format");
   }
-  
+
   return amount;
 };
 
@@ -75,7 +75,10 @@ export const calculatePercentage = (value: number, total: number): number => {
 /**
  * Calculate percentage change
  */
-export const calculatePercentageChange = (oldValue: number, newValue: number): number => {
+export const calculatePercentageChange = (
+  oldValue: number,
+  newValue: number,
+): number => {
   if (oldValue === 0) return newValue > 0 ? 100 : 0;
   return roundAmount(((newValue - oldValue) / oldValue) * 100, 2);
 };
@@ -87,9 +90,11 @@ export const calculateCompoundInterest = (
   principal: number,
   rate: number,
   time: number,
-  compoundingFrequency: number = 12
+  compoundingFrequency: number = 12,
 ): number => {
-  const amount = principal * Math.pow(1 + rate / compoundingFrequency, compoundingFrequency * time);
+  const amount =
+    principal *
+    Math.pow(1 + rate / compoundingFrequency, compoundingFrequency * time);
   return roundAmount(amount, 2);
 };
 
@@ -99,7 +104,7 @@ export const calculateCompoundInterest = (
 export const calculateSimpleInterest = (
   principal: number,
   rate: number,
-  time: number
+  time: number,
 ): number => {
   const interest = principal * rate * time;
   return roundAmount(interest, 2);
@@ -111,19 +116,19 @@ export const calculateSimpleInterest = (
 export const calculateMonthlyPayment = (
   principal: number,
   annualRate: number,
-  years: number
+  years: number,
 ): number => {
   const monthlyRate = annualRate / 12;
   const numberOfPayments = years * 12;
-  
+
   if (monthlyRate === 0) {
     return principal / numberOfPayments;
   }
-  
-  const monthlyPayment = principal * 
-    (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) /
+
+  const monthlyPayment =
+    (principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments))) /
     (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-  
+
   return roundAmount(monthlyPayment, 2);
 };
 
@@ -133,7 +138,7 @@ export const calculateMonthlyPayment = (
 export const calculateTotalInterest = (
   principal: number,
   annualRate: number,
-  years: number
+  years: number,
 ): number => {
   const monthlyPayment = calculateMonthlyPayment(principal, annualRate, years);
   const totalPaid = monthlyPayment * years * 12;
@@ -147,10 +152,10 @@ export const calculateAPR = (
   loanAmount: number,
   totalInterest: number,
   fees: number,
-  termInYears: number
+  termInYears: number,
 ): number => {
   const totalCost = totalInterest + fees;
-  const apr = (totalCost / loanAmount) / termInYears;
+  const apr = totalCost / loanAmount / termInYears;
   return roundAmount(apr * 100, 2);
 };
 
@@ -160,9 +165,11 @@ export const calculateAPR = (
 export const convertCurrency = (
   amount: number,
   exchangeRate: number,
-  inverse: boolean = false
+  inverse: boolean = false,
 ): number => {
-  const convertedAmount = inverse ? amount / exchangeRate : amount * exchangeRate;
+  const convertedAmount = inverse
+    ? amount / exchangeRate
+    : amount * exchangeRate;
   return roundAmount(convertedAmount, 2);
 };
 
@@ -173,7 +180,7 @@ export const calculateWireTransferFee = (
   _amount: number, // Marked as unused with underscore prefix
   isInternational: boolean,
   domesticFee: number = 25,
-  internationalFee: number = 45
+  internationalFee: number = 45,
 ): number => {
   return isInternational ? internationalFee : domesticFee;
 };
@@ -185,18 +192,18 @@ export const calculateTransactionFee = (
   amount: number,
   feePercentage: number,
   minimumFee: number = 0,
-  maximumFee?: number
+  maximumFee?: number,
 ): number => {
   let fee = amount * (feePercentage / 100);
-  
+
   if (fee < minimumFee) {
     fee = minimumFee;
   }
-  
+
   if (maximumFee && fee > maximumFee) {
     fee = maximumFee;
   }
-  
+
   return roundAmount(fee, 2);
 };
 
@@ -206,12 +213,13 @@ export const calculateTransactionFee = (
 export const calculateNewBalance = (
   currentBalance: number,
   transactionAmount: number,
-  transactionType: 'DEBIT' | 'CREDIT'
+  transactionType: "DEBIT" | "CREDIT",
 ): number => {
-  const newBalance = transactionType === 'CREDIT' 
-    ? currentBalance + transactionAmount 
-    : currentBalance - transactionAmount;
-  
+  const newBalance =
+    transactionType === "CREDIT"
+      ? currentBalance + transactionAmount
+      : currentBalance - transactionAmount;
+
   return roundAmount(newBalance, 2);
 };
 
@@ -221,9 +229,9 @@ export const calculateNewBalance = (
 export const isWithinDailyLimit = (
   currentDayTotal: number,
   newAmount: number,
-  dailyLimit: number
+  dailyLimit: number,
 ): boolean => {
-  return (currentDayTotal + newAmount) <= dailyLimit;
+  return currentDayTotal + newAmount <= dailyLimit;
 };
 
 /**
@@ -232,9 +240,9 @@ export const isWithinDailyLimit = (
 export const isWithinMonthlyLimit = (
   currentMonthTotal: number,
   newAmount: number,
-  monthlyLimit: number
+  monthlyLimit: number,
 ): boolean => {
-  return (currentMonthTotal + newAmount) <= monthlyLimit;
+  return currentMonthTotal + newAmount <= monthlyLimit;
 };
 
 /**
@@ -242,7 +250,7 @@ export const isWithinMonthlyLimit = (
  */
 export const getRemainingDailyLimit = (
   currentDayTotal: number,
-  dailyLimit: number
+  dailyLimit: number,
 ): number => {
   const remaining = dailyLimit - currentDayTotal;
   return Math.max(0, remaining);
@@ -253,7 +261,7 @@ export const getRemainingDailyLimit = (
  */
 export const getRemainingMonthlyLimit = (
   currentMonthTotal: number,
-  monthlyLimit: number
+  monthlyLimit: number,
 ): number => {
   const remaining = monthlyLimit - currentMonthTotal;
   return Math.max(0, remaining);
@@ -264,19 +272,21 @@ export const getRemainingMonthlyLimit = (
  */
 export const calculateBalanceTrend = (
   currentBalance: number,
-  previousBalance: number
-): 'up' | 'down' | 'stable' => {
-  if (currentBalance > previousBalance) return 'up';
-  if (currentBalance < previousBalance) return 'down';
-  return 'stable';
+  previousBalance: number,
+): "up" | "down" | "stable" => {
+  if (currentBalance > previousBalance) return "up";
+  if (currentBalance < previousBalance) return "down";
+  return "stable";
 };
 
 /**
  * Calculate average transaction amount
  */
-export const calculateAverageTransactionAmount = (transactions: number[]): number => {
+export const calculateAverageTransactionAmount = (
+  transactions: number[],
+): number => {
   if (transactions.length === 0) return 0;
-  
+
   const total = transactions.reduce((sum, amount) => sum + amount, 0);
   return roundAmount(total / transactions.length, 2);
 };
@@ -292,7 +302,9 @@ export const calculateTransactionVolume = (transactions: number[]): number => {
 /**
  * Calculate net transaction amount
  */
-export const calculateNetTransactionAmount = (transactions: number[]): number => {
+export const calculateNetTransactionAmount = (
+  transactions: number[],
+): number => {
   const total = transactions.reduce((sum, amount) => sum + amount, 0);
   return roundAmount(total, 2);
 };
@@ -302,13 +314,13 @@ export const calculateNetTransactionAmount = (transactions: number[]): number =>
  */
 export const formatLargeNumber = (num: number): string => {
   if (num >= 1000000000) {
-    return (num / 1000000000).toFixed(1) + 'B';
+    return (num / 1000000000).toFixed(1) + "B";
   }
   if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M';
+    return (num / 1000000).toFixed(1) + "M";
   }
   if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K';
+    return (num / 1000).toFixed(1) + "K";
   }
   return num.toString();
 };
@@ -318,7 +330,7 @@ export const formatLargeNumber = (num: number): string => {
  */
 export const calculateCreditUtilization = (
   currentBalance: number,
-  creditLimit: number
+  creditLimit: number,
 ): number => {
   if (creditLimit === 0) return 0;
   return roundAmount((currentBalance / creditLimit) * 100, 2);
@@ -330,7 +342,7 @@ export const calculateCreditUtilization = (
 export const calculateMinimumPayment = (
   balance: number,
   minimumPercentage: number = 0.02,
-  minimumAmount: number = 25
+  minimumAmount: number = 25,
 ): number => {
   const percentagePayment = balance * minimumPercentage;
   return Math.max(percentagePayment, minimumAmount);
@@ -342,30 +354,33 @@ export const calculateMinimumPayment = (
 export const validateAmount = (
   amount: number,
   minAmount: number = 0.01,
-  maxAmount: number = 1000000
+  maxAmount: number = 1000000,
 ): { isValid: boolean; error?: string } => {
   if (isNaN(amount) || !isFinite(amount)) {
-    return { isValid: false, error: 'Invalid amount format' };
+    return { isValid: false, error: "Invalid amount format" };
   }
-  
+
   if (amount < minAmount) {
-    return { isValid: false, error: `Amount must be at least ${formatCurrency(minAmount)}` };
+    return {
+      isValid: false,
+      error: `Amount must be at least ${formatCurrency(minAmount)}`,
+    };
   }
-  
+
   if (amount > maxAmount) {
-    return { isValid: false, error: `Amount cannot exceed ${formatCurrency(maxAmount)}` };
+    return {
+      isValid: false,
+      error: `Amount cannot exceed ${formatCurrency(maxAmount)}`,
+    };
   }
-  
+
   return { isValid: true };
 };
 
 /**
  * Calculate tax amount
  */
-export const calculateTax = (
-  amount: number,
-  taxRate: number
-): number => {
+export const calculateTax = (amount: number, taxRate: number): number => {
   return roundAmount(amount * taxRate, 2);
 };
 
@@ -374,7 +389,7 @@ export const calculateTax = (
  */
 export const calculateAmountAfterTax = (
   amount: number,
-  taxRate: number
+  taxRate: number,
 ): number => {
   const tax = calculateTax(amount, taxRate);
   return roundAmount(amount + tax, 2);

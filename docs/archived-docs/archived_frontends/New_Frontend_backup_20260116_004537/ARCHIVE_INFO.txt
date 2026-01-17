@@ -1,0 +1,20 @@
+AURUM VAULT - New_Frontend Archive
+===================================
+
+Archived on: Fri Jan 16 00:47:27 WAT 2026
+Reason: Frontend split into corporate-website and e-banking-portal
+Original path: /Volumes/Project Disk/PROJECTS/CODING/BANK/AutumVault/New_Frontend
+Archive path: /Volumes/Project Disk/PROJECTS/CODING/BANK/AutumVault/archived_frontends/New_Frontend_backup_20260116_004537
+
+This is a backup of the original monolithic frontend before detachment.
+
+New Structure:
+- Corporate Website: /Volumes/Project Disk/PROJECTS/CODING/BANK/AutumVault/corporate-website (Port 3002)
+- E-Banking Portal: /Volumes/Project Disk/PROJECTS/CODING/BANK/AutumVault/e-banking-portal (Port 4000)
+
+To restore (if needed):
+1. Stop new frontends
+2. Copy this directory back to: /Volumes/Project Disk/PROJECTS/CODING/BANK/AutumVault/New_Frontend
+3. Restart development server
+
+DO NOT DELETE THIS ARCHIVE without verifying new frontends work correctly.

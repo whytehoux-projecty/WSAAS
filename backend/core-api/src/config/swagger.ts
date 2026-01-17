@@ -108,9 +108,9 @@ Response includes pagination metadata:
     ],
     securityDefinitions: {
       Bearer: {
-        type: 'apiKey',
+        type: 'apiKey' as const,
         name: 'Authorization',
-        in: 'header',
+        in: 'header' as const,
         description: 'Enter your JWT token in the format: Bearer <token>',
       },
     },
@@ -122,7 +122,7 @@ Response includes pagination metadata:
 export const swaggerUiConfig = {
   routePrefix: '/docs',
   uiConfig: {
-    docExpansion: 'list',
+    docExpansion: 'list' as const,
     deepLinking: true,
     defaultModelsExpandDepth: 2,
     defaultModelExpandDepth: 2,
@@ -159,7 +159,7 @@ export const commonSchemas = {
       },
     },
   },
-  
+
   SuccessResponse: {
     type: 'object',
     properties: {

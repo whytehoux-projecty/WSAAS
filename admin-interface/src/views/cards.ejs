@@ -1,0 +1,180 @@
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">Filter Cards</h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" id="searchUser"
+                                placeholder="Search by user email...">
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" id="statusFilter">
+                                <option value="">All Statuses</option>
+                                <option value="ACTIVE">Active</option>
+                                <option value="FROZEN">Frozen</option>
+                                <option value="BLOCKED">Blocked</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" id="typeFilter">
+                                <option value="">All Types</option>
+                                <option value="DEBIT">Debit</option>
+                                <option value="CREDIT">Credit</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" onclick="loadCards()">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">Card Management</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Card Number</th>
+                                    <th>User</th>
+                                    <th>Type</th>
+                                    <th>Network</th>
+                                    <th>Status</th>
+                                    <th>Daily Limit</th>
+                                    <th>Expiry</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cardsTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <nav aria-label="Page navigation" id="pagination" class="mt-3"></nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    const limit = 20;
+
+    async function loadCards(page = 1) {
+        currentPage = page;
+        const status = document.getElementById('statusFilter').value;
+        const cardType = document.getElementById('typeFilter').value;
+        const search = document.getElementById('searchUser').value;
+
+        const params = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString()
+        });
+
+        if (status) params.append('status', status);
+        if (cardType) params.append('cardType', cardType);
+
+        try {
+            const response = await fetch(`/api/cards?${params.toString()}`);
+            const data = await response.json();
+
+            const tbody = document.getElementById('cardsTableBody');
+            tbody.innerHTML = '';
+
+            if (data.cards && data.cards.length > 0) {
+                data.cards.forEach(card => {
+                    const row = document.createElement('tr');
+                    const statusBadge = getStatusBadge(card.status);
+                    const maskedNumber = '**** **** **** ' + card.cardNumber.slice(-4);
+
+                    row.innerHTML = `
+                    <td><code>${maskedNumber}</code></td>
+                    <td>
+                        <div>${card.account.user.firstName} ${card.account.user.lastName}</div>
+                        <small class="text-muted">${card.account.user.email}</small>
+                    </td>
+                    <td><span class="badge bg-info">${card.cardType}</span></td>
+                    <td>${card.network}</td>
+                    <td>${statusBadge}</td>
+                    <td>$${parseFloat(card.dailyLimit).toLocaleString()}</td>
+                    <td>${new Date(card.expiryDate).toLocaleDateString()}</td>
+                    <td>${new Date(card.createdAt).toLocaleDateString()}</td>
+                `;
+                    tbody.appendChild(row);
+                });
+
+                renderPagination(data.pagination);
+            } else {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">No cards found</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading cards:', error);
+            document.getElementById('cardsTableBody').innerHTML =
+                '<tr><td colspan="8" class="text-center text-danger">Error loading cards</td></tr>';
+        }
+    }
+
+    function getStatusBadge(status) {
+        const badges = {
+            'ACTIVE': '<span class="badge bg-success">Active</span>',
+            'FROZEN': '<span class="badge bg-warning">Frozen</span>',
+            'BLOCKED': '<span class="badge bg-danger">Blocked</span>'
+        };
+        return badges[status] || '<span class="badge bg-secondary">' + status + '</span>';
+    }
+
+    function renderPagination(pagination) {
+        const paginationEl = document.getElementById('pagination');
+        if (!pagination || pagination.pages <= 1) {
+            paginationEl.innerHTML = '';
+            return;
+        }
+
+        let html = '<ul class="pagination justify-content-center">';
+
+        // Previous button
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="loadCards(${currentPage - 1}); return false;">Previous</a>
+    </li>`;
+
+        // Page numbers
+        for (let i = 1; i <= pagination.pages; i++) {
+            if (i === 1 || i === pagination.pages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="loadCards(${i}); return false;">${i}</a>
+            </li>`;
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+        }
+
+        // Next button
+        html += `<li class="page-item ${currentPage === pagination.pages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="loadCards(${currentPage + 1}); return false;">Next</a>
+    </li>`;
+
+        html += '</ul>';
+        paginationEl.innerHTML = html;
+    }
+
+    // Load cards on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCards();
+    });
+</script>

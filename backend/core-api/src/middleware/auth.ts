@@ -152,12 +152,12 @@ export const requireAdminRole = async (request: FastifyRequest, reply: FastifyRe
     });
   }
 
-  // Check if user has admin privileges
+  // Check if user has admin privileges (AdminUser identified by email in this schema)
   const adminUser = await prisma.adminUser.findUnique({
-    where: { userId: user.userId },
+    where: { email: user.email },
   });
 
-  if (!adminUser || !adminUser.isActive) {
+  if (!adminUser || adminUser.status !== 'ACTIVE') {
     return reply.status(HTTP_STATUS.FORBIDDEN).send({
       success: false,
       error: ERROR_CODES.INSUFFICIENT_PERMISSIONS,
@@ -280,18 +280,14 @@ export const requireTransactionOwnership = async (request: FastifyRequest, reply
     });
   }
 
-  // Check if user owns the transaction (through account ownership)
+  // Check if user owns the transaction via the linked account
   const transaction = await prisma.transaction.findFirst({
     where: {
       id: transactionId,
-      OR: [
-        { fromAccount: { userId: user.userId } },
-        { toAccount: { userId: user.userId } },
-      ],
+      account: { userId: user.userId },
     },
     include: {
-      fromAccount: true,
-      toAccount: true,
+      account: true,
     },
   });
 

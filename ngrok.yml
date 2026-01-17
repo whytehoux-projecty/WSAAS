@@ -1,0 +1,63 @@
+# ngrok Configuration for AURUM VAULT
+# https://ngrok.com/docs/secure-tunnels/ngrok-agent/reference/config/
+
+version: "2"
+
+# Your ngrok auth token (get from: https://dashboard.ngrok.com/get-started/your-authtoken)
+# IMPORTANT: Replace with your actual auth token
+authtoken: YOUR_NGROK_AUTH_TOKEN_HERE
+
+# Logging configuration
+log_level: info
+log_format: json
+log: /tmp/ngrok.log
+
+# Tunnels configuration
+tunnels:
+  # Backend Core API Tunnel
+  backend:
+    proto: http
+    addr: 3001
+    inspect: true
+    # Uncomment for paid plan with custom subdomain:
+    # subdomain: aurumvault-api
+    # domain: aurumvault-api.ngrok.io
+
+  # Admin Interface Tunnel
+  admin:
+    proto: http
+    addr: 3003
+    inspect: true
+    # Uncomment for paid plan with custom subdomain:
+    # subdomain: aurumvault-admin
+    # domain: aurumvault-admin.ngrok.io
+
+  # E-Banking Portal Tunnel
+  portal:
+    proto: http
+    addr: 4000
+    inspect: true
+    # Uncomment for paid plan with custom subdomain:
+    # subdomain: aurumvault-portal
+    # domain: aurumvault-portal.ngrok.io
+
+# Web interface for inspecting traffic
+web_addr: localhost:4040
+
+# Region (choose closest to your location)
+# Options: us, eu, ap, au, sa, jp, in
+region: us
+
+# Update check
+update_check: true
+
+# Console UI
+console_ui: true
+# Notes:
+# 1. Get your auth token from: https://dashboard.ngrok.com/get-started/your-authtoken
+# 2. Replace YOUR_NGROK_AUTH_TOKEN_HERE with your actual token
+# 3. Free plan: Dynamic URLs (change on restart)
+# 4. Paid plan ($8/month): Uncomment subdomain/domain lines for static URLs
+# 5. Start all tunnels: ngrok start --all --config ngrok.yml
+# 6. View tunnel status: http://localhost:4040
+# 7. Get tunnel URLs via API: curl http://localhost:4040/api/tunnels

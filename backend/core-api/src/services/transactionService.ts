@@ -7,13 +7,16 @@ export class TransactionService {
   /**
    * Create a deposit transaction
    */
-  static async createDeposit(userId: string, depositData: {
-    accountId: string;
-    amount: number;
-    currency?: string;
-    description: string;
-    reference?: string;
-  }) {
+  static async createDeposit(
+    userId: string,
+    depositData: {
+      accountId: string;
+      amount: number;
+      currency?: string;
+      description: string;
+      reference?: string;
+    }
+  ) {
     const { accountId, amount, currency = 'USD', description, reference } = depositData;
 
     // Validate amount
@@ -42,17 +45,17 @@ export class TransactionService {
           metadata: {
             userId,
             ipAddress: null, // Should be passed from request
-            userAgent: null  // Should be passed from request
-          }
-        }
+            userAgent: null, // Should be passed from request
+          },
+        },
       });
 
       await tx.account.update({
         where: { id: accountId },
         data: {
           balance: { increment: amount },
-          lastTransactionAt: new Date()
-        }
+          lastTransactionAt: new Date(),
+        },
       });
 
       // Create audit log
@@ -66,9 +69,9 @@ export class TransactionService {
             accountId,
             amount,
             currency,
-            description
-          }
-        }
+            description,
+          },
+        },
       });
 
       return transaction;
@@ -80,13 +83,16 @@ export class TransactionService {
   /**
    * Create a withdrawal transaction
    */
-  static async createWithdrawal(userId: string, withdrawalData: {
-    accountId: string;
-    amount: number;
-    currency?: string;
-    description: string;
-    reference?: string;
-  }) {
+  static async createWithdrawal(
+    userId: string,
+    withdrawalData: {
+      accountId: string;
+      amount: number;
+      currency?: string;
+      description: string;
+      reference?: string;
+    }
+  ) {
     const { accountId, amount, currency = 'USD', description, reference } = withdrawalData;
 
     // Validate amount
@@ -101,8 +107,13 @@ export class TransactionService {
     // Verify account ownership and status
     const account = await this.verifyAccountAccess(accountId, userId);
 
-    // Check sufficient balance
-    if (account.balance < amount) {
+    // Check sufficient balance - convert Decimal to number if needed
+    const balance =
+      typeof account.balance === 'object' && 'toNumber' in account.balance
+        ? account.balance.toNumber()
+        : Number(account.balance);
+
+    if (balance < amount) {
       throw new Error('Insufficient funds');
     }
 
@@ -129,17 +140,17 @@ export class TransactionService {
           metadata: {
             userId,
             ipAddress: null,
-            userAgent: null
-          }
-        }
+            userAgent: null,
+          },
+        },
       });
 
       await tx.account.update({
         where: { id: accountId },
         data: {
           balance: { decrement: amount },
-          lastTransactionAt: new Date()
-        }
+          lastTransactionAt: new Date(),
+        },
       });
 
       // Create audit log
@@ -153,9 +164,9 @@ export class TransactionService {
             accountId,
             amount,
             currency,
-            description
-          }
-        }
+            description,
+          },
+        },
       });
 
       return transaction;
@@ -167,15 +178,25 @@ export class TransactionService {
   /**
    * Create a transfer transaction
    */
-  static async createTransfer(userId: string, transferData: {
-    fromAccountId: string;
-    toAccountId: string;
-    amount: number;
-    currency?: string;
-    description: string;
-    reference?: string;
-  }) {
-    const { fromAccountId, toAccountId, amount, currency = 'USD', description, reference } = transferData;
+  static async createTransfer(
+    userId: string,
+    transferData: {
+      fromAccountId: string;
+      toAccountId: string;
+      amount: number;
+      currency?: string;
+      description: string;
+      reference?: string;
+    }
+  ) {
+    const {
+      fromAccountId,
+      toAccountId,
+      amount,
+      currency = 'USD',
+      description,
+      reference,
+    } = transferData;
 
     if (fromAccountId === toAccountId) {
       throw new Error('Cannot transfer to the same account');
@@ -195,15 +216,20 @@ export class TransactionService {
 
     // Verify destination account exists and is active
     const toAccount = await prisma.account.findFirst({
-      where: { id: toAccountId, status: 'ACTIVE' }
+      where: { id: toAccountId, status: 'ACTIVE' },
     });
 
     if (!toAccount) {
       throw new Error('Destination account not found or inactive');
     }
 
-    // Check sufficient balance
-    if (fromAccount.balance < amount) {
+    // Check sufficient balance - convert Decimal to number if needed
+    const fromBalance =
+      typeof fromAccount.balance === 'object' && 'toNumber' in fromAccount.balance
+        ? fromAccount.balance.toNumber()
+        : Number(fromAccount.balance);
+
+    if (fromBalance < amount) {
       throw new Error('Insufficient funds');
     }
 
@@ -233,9 +259,9 @@ export class TransactionService {
           metadata: {
             userId,
             transferType: 'DEBIT',
-            relatedAccountId: toAccountId
-          }
-        }
+            relatedAccountId: toAccountId,
+          },
+        },
       });
 
       // Credit to destination account
@@ -251,9 +277,9 @@ export class TransactionService {
           metadata: {
             userId,
             transferType: 'CREDIT',
-            relatedAccountId: fromAccountId
-          }
-        }
+            relatedAccountId: fromAccountId,
+          },
+        },
       });
 
       // Update account balances
@@ -261,16 +287,16 @@ export class TransactionService {
         where: { id: fromAccountId },
         data: {
           balance: { decrement: amount },
-          lastTransactionAt: new Date()
-        }
+          lastTransactionAt: new Date(),
+        },
       });
 
       await tx.account.update({
         where: { id: toAccountId },
         data: {
           balance: { increment: amount },
-          lastTransactionAt: new Date()
-        }
+          lastTransactionAt: new Date(),
+        },
       });
 
       // Create audit log
@@ -286,9 +312,9 @@ export class TransactionService {
             amount,
             currency,
             description,
-            reference: transferRef
-          }
-        }
+            reference: transferRef,
+          },
+        },
       });
 
       return [debitTransaction, creditTransaction];
@@ -300,22 +326,25 @@ export class TransactionService {
   /**
    * Get user transactions with pagination and filtering
    */
-  static async getUserTransactions(userId: string, filters: {
-    page?: number;
-    limit?: number;
-    accountId?: string;
-    type?: string;
-    status?: string;
-    startDate?: Date;
-    endDate?: Date;
-  }) {
+  static async getUserTransactions(
+    userId: string,
+    filters: {
+      page?: number;
+      limit?: number;
+      accountId?: string;
+      type?: string;
+      status?: string;
+      startDate?: Date;
+      endDate?: Date;
+    }
+  ) {
     const { page = 1, limit = 20, accountId, type, status, startDate, endDate } = filters;
     const skip = (page - 1) * limit;
 
     // Get user's account IDs
     const userAccounts = await prisma.account.findMany({
       where: { userId },
-      select: { id: true }
+      select: { id: true },
     });
 
     const accountIds = userAccounts.map((acc: any) => acc.id);
@@ -323,12 +352,12 @@ export class TransactionService {
     if (accountIds.length === 0) {
       return {
         transactions: [],
-        pagination: { page, limit, total: 0, pages: 0 }
+        pagination: { page, limit, total: 0, pages: 0 },
       };
     }
 
     const where: any = {
-      accountId: { in: accountId ? [accountId] : accountIds }
+      accountId: { in: accountId ? [accountId] : accountIds },
     };
 
     if (type) where.type = type;
@@ -346,15 +375,15 @@ export class TransactionService {
           account: {
             select: {
               accountNumber: true,
-              accountType: true
-            }
-          }
+              accountType: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
-        take: limit
+        take: limit,
       }),
-      prisma.transaction.count({ where })
+      prisma.transaction.count({ where }),
     ]);
 
     return {
@@ -363,8 +392,8 @@ export class TransactionService {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -375,16 +404,16 @@ export class TransactionService {
     const transaction = await prisma.transaction.findFirst({
       where: {
         id: transactionId,
-        account: { userId }
+        account: { userId },
       },
       include: {
         account: {
           select: {
             accountNumber: true,
-            accountType: true
-          }
-        }
-      }
+            accountType: true,
+          },
+        },
+      },
     });
 
     if (!transaction) {
@@ -401,7 +430,7 @@ export class TransactionService {
     // Calculate date range
     const now = new Date();
     const startDate = new Date();
-    
+
     switch (period) {
       case 'week':
         startDate.setDate(now.getDate() - 7);
@@ -416,7 +445,7 @@ export class TransactionService {
     // Get user's account IDs
     const userAccounts = await prisma.account.findMany({
       where: { userId },
-      select: { id: true }
+      select: { id: true },
     });
 
     const accountIds = userAccounts.map((acc: any) => acc.id);
@@ -428,37 +457,39 @@ export class TransactionService {
         deposits: 0,
         withdrawals: 0,
         transfers: 0,
-        byType: { DEPOSIT: 0, WITHDRAWAL: 0, TRANSFER: 0, PAYMENT: 0 }
+        byType: { DEPOSIT: 0, WITHDRAWAL: 0, TRANSFER: 0, PAYMENT: 0 },
       };
     }
 
     const where = {
       accountId: { in: accountIds },
       createdAt: { gte: startDate },
-      status: 'COMPLETED'
+      status: 'COMPLETED',
     };
 
     const [stats, typeStats] = await Promise.all([
       prisma.transaction.aggregate({
         where,
         _count: { id: true },
-        _sum: { amount: true }
+        _sum: { amount: true },
       }),
       prisma.transaction.groupBy({
         by: ['type'],
         where,
         _count: { id: true },
-        _sum: { amount: true }
-      })
+        _sum: { amount: true },
+      }),
     ]);
 
     const byType = { DEPOSIT: 0, WITHDRAWAL: 0, TRANSFER: 0, PAYMENT: 0 };
-    let deposits = 0, withdrawals = 0, transfers = 0;
+    let deposits = 0,
+      withdrawals = 0,
+      transfers = 0;
 
     typeStats.forEach((stat: any) => {
       byType[stat.type as keyof typeof byType] = stat._count.id;
       const amount = stat._sum.amount || 0;
-      
+
       switch (stat.type) {
         case 'DEPOSIT':
           deposits += amount;
@@ -478,7 +509,7 @@ export class TransactionService {
       deposits,
       withdrawals,
       transfers,
-      byType
+      byType,
     };
   }
 
@@ -490,8 +521,8 @@ export class TransactionService {
       where: {
         id: accountId,
         userId,
-        status: 'ACTIVE'
-      }
+        status: 'ACTIVE',
+      },
     });
 
     if (!account) {
@@ -507,25 +538,40 @@ export class TransactionService {
   private static async checkDailyLimit(accountId: string, amount: number, _type: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const todayTransactions = await prisma.transaction.aggregate({
       where: {
         accountId,
         type: { in: ['WITHDRAWAL', 'TRANSFER'] },
         status: 'COMPLETED',
-        createdAt: { gte: today }
+        createdAt: { gte: today },
       },
-      _sum: { amount: true }
+      _sum: { amount: true },
     });
 
     const account = await prisma.account.findUnique({
       where: { id: accountId },
-      select: { dailyLimit: true }
+      select: { dailyLimit: true },
     });
 
-    const todayTotal = Math.abs(todayTransactions._sum.amount || 0) + amount;
-    
-    if (todayTotal > (account?.dailyLimit || TRANSACTION_CONFIG.DAILY_LIMIT)) {
+    // Convert Decimal to number if needed
+    const sumAmount = todayTransactions._sum.amount;
+    const dailySpent = sumAmount
+      ? typeof sumAmount === 'object' && 'toNumber' in sumAmount
+        ? sumAmount.toNumber()
+        : Number(sumAmount)
+      : 0;
+    const todayTotal = Math.abs(dailySpent) + amount;
+
+    // Convert account limit to number if needed
+    const accountLimit = account?.dailyLimit;
+    const dailyLimit = accountLimit
+      ? typeof accountLimit === 'object' && 'toNumber' in accountLimit
+        ? accountLimit.toNumber()
+        : Number(accountLimit)
+      : TRANSACTION_CONFIG.DAILY_LIMIT;
+
+    if (todayTotal > dailyLimit) {
       throw new Error(`Daily transaction limit exceeded`);
     }
   }
@@ -536,25 +582,40 @@ export class TransactionService {
   private static async checkMonthlyLimit(accountId: string, amount: number, _type: string) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    
+
     const monthlyTransactions = await prisma.transaction.aggregate({
       where: {
         accountId,
         type: { in: ['WITHDRAWAL', 'TRANSFER'] },
         status: 'COMPLETED',
-        createdAt: { gte: monthStart }
+        createdAt: { gte: monthStart },
       },
-      _sum: { amount: true }
+      _sum: { amount: true },
     });
 
     const account = await prisma.account.findUnique({
       where: { id: accountId },
-      select: { monthlyLimit: true }
+      select: { monthlyLimit: true },
     });
 
-    const monthlyTotal = Math.abs(monthlyTransactions._sum.amount || 0) + amount;
-    
-    if (monthlyTotal > (account?.monthlyLimit || TRANSACTION_CONFIG.MONTHLY_LIMIT)) {
+    // Convert Decimal to number if needed
+    const sumAmount = monthlyTransactions._sum.amount;
+    const monthlySpent = sumAmount
+      ? typeof sumAmount === 'object' && 'toNumber' in sumAmount
+        ? sumAmount.toNumber()
+        : Number(sumAmount)
+      : 0;
+    const monthlyTotal = Math.abs(monthlySpent) + amount;
+
+    // Convert account limit to number if needed
+    const accountLimit = account?.monthlyLimit;
+    const monthlyLimit = accountLimit
+      ? typeof accountLimit === 'object' && 'toNumber' in accountLimit
+        ? accountLimit.toNumber()
+        : Number(accountLimit)
+      : TRANSACTION_CONFIG.MONTHLY_LIMIT;
+
+    if (monthlyTotal > monthlyLimit) {
       throw new Error(`Monthly transaction limit exceeded`);
     }
   }
@@ -562,7 +623,12 @@ export class TransactionService {
   /**
    * Perform fraud detection checks
    */
-  private static async performFraudChecks(userId: string, accountId: string, amount: number, type: string) {
+  private static async performFraudChecks(
+    userId: string,
+    accountId: string,
+    amount: number,
+    type: string
+  ) {
     // Check for suspicious amount
     if (amount >= BUSINESS_RULES.FRAUD_DETECTION.SUSPICIOUS_AMOUNT_THRESHOLD) {
       // Log suspicious activity
@@ -572,25 +638,27 @@ export class TransactionService {
           action: 'SUSPICIOUS_TRANSACTION_DETECTED',
           entityType: 'TRANSACTION',
           entityId: accountId,
-          details: {
+          details: JSON.stringify({
             amount,
             type,
-            reason: 'Large amount transaction'
-          }
-        }
+            reason: 'Large amount transaction',
+          }),
+        },
       });
     }
 
     // Check transaction velocity
-    const velocityWindow = new Date(Date.now() - BUSINESS_RULES.FRAUD_DETECTION.VELOCITY_CHECK_WINDOW);
-    
+    const velocityWindow = new Date(
+      Date.now() - BUSINESS_RULES.FRAUD_DETECTION.VELOCITY_CHECK_WINDOW
+    );
+
     const recentTransactions = await prisma.transaction.count({
       where: {
         accountId,
         type: { in: ['WITHDRAWAL', 'TRANSFER'] },
         status: 'COMPLETED',
-        createdAt: { gte: velocityWindow }
-      }
+        createdAt: { gte: velocityWindow },
+      },
     });
 
     if (recentTransactions >= BUSINESS_RULES.FRAUD_DETECTION.MAX_DAILY_TRANSACTIONS) {
@@ -604,7 +672,7 @@ export class TransactionService {
   static async processPendingTransactions() {
     const pendingTransactions = await prisma.transaction.findMany({
       where: { status: 'PENDING' },
-      include: { account: true }
+      include: { account: true },
     });
 
     const results = [];
@@ -615,44 +683,41 @@ export class TransactionService {
           // Update transaction status
           await tx.transaction.update({
             where: { id: transaction.id },
-            data: { 
+            data: {
               status: 'COMPLETED',
-              processedAt: new Date()
-            }
+              processedAt: new Date(),
+            },
           });
 
           // Update account balance based on transaction type
-          const balanceChange = transaction.type === 'DEPOSIT' ? 
-            transaction.amount : -Math.abs(transaction.amount);
+          // Convert Decimal to number if needed
+          const amount =
+            typeof transaction.amount === 'object' && 'toNumber' in transaction.amount
+              ? transaction.amount.toNumber()
+              : Number(transaction.amount);
+
+          const balanceChange = transaction.type === 'DEPOSIT' ? amount : -Math.abs(amount);
 
           await tx.account.update({
             where: { id: transaction.accountId },
             data: {
-              balance: { increment: balanceChange },
-              lastTransactionAt: new Date()
-            }
+              balance: {
+                increment: balanceChange,
+              },
+            },
           });
         });
 
         results.push({
-          transactionId: transaction.id,
-          status: 'COMPLETED'
+          id: transaction.id,
+          status: 'COMPLETED',
+          message: 'Transaction processed successfully',
         });
       } catch (error) {
-        // Mark transaction as failed
-        await prisma.transaction.update({
-          where: { id: transaction.id },
-          data: { 
-            status: 'FAILED',
-            processedAt: new Date(),
-            failureReason: error instanceof Error ? error.message : 'Unknown error'
-          }
-        });
-
         results.push({
-          transactionId: transaction.id,
+          id: transaction.id,
           status: 'FAILED',
-          error: error instanceof Error ? error.message : 'Unknown error'
+          message: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }

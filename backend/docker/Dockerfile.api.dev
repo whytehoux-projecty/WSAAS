@@ -1,0 +1,163 @@
+# Multi-stage Dockerfile for Aurum Vault Core Banking API (Development)
+FROM node:18-alpine AS base
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    git \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/cache/apk/*
+
+WORKDIR /app
+
+# Development stage
+FROM base AS development
+
+# Install development tools
+RUN npm install -g nodemon tsx
+
+# Copy package files for better caching
+COPY package*.json ./
+COPY shared/package*.json ./shared/
+COPY core-api/package*.json ./core-api/
+
+# Set npm configuration for better reliability and timeout handling
+RUN npm config set fetch-retry-mintimeout 30000 && \
+    npm config set fetch-retry-maxtimeout 300000 && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-timeout 300000 && \
+    npm config set registry https://registry.npmjs.org/ && \
+    npm config set maxsockets 1 && \
+    npm config set progress false
+
+# Install dependencies with enhanced retry logic and better error handling
+RUN set -e; \
+    for i in 1 2 3 4 5; do \
+        echo "Attempt $i: Installing dependencies..."; \
+        if npm ci --no-audit --no-fund --prefer-offline; then \
+            echo "Dependencies installed successfully on attempt $i"; \
+            break; \
+        else \
+            echo "Attempt $i failed, waiting before retry..."; \
+            if [ $i -eq 5 ]; then \
+                echo "All attempts failed"; \
+                exit 1; \
+            fi; \
+            sleep $((i * 15)); \
+            npm cache clean --force; \
+        fi; \
+    done
+
+# Copy source code
+COPY shared ./shared
+COPY core-api ./core-api
+
+# Build shared library
+WORKDIR /app/shared
+RUN npm run build
+
+# Generate Prisma client
+WORKDIR /app/core-api
+RUN npx prisma generate
+
+# Set working directory back to app root
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S aurumvault -u 1001 -G nodejs
+
+# Change ownership
+RUN chown -R aurumvault:nodejs /app
+USER aurumvault
+
+# Expose ports
+EXPOSE 3000 9229
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
+
+# Development command
+CMD ["npm", "run", "dev", "--workspace=core-api"]
+
+# Build stage
+FROM development AS build
+
+USER root
+WORKDIR /app
+
+# Install all dependencies including dev dependencies
+RUN npm ci --no-audit --no-fund
+
+# Build the application
+WORKDIR /app/core-api
+RUN npm run build
+
+# Production stage
+FROM base AS production
+
+# Copy package files
+COPY package*.json ./
+COPY shared/package*.json ./shared/
+COPY core-api/package*.json ./core-api/
+
+# Install only production dependencies with enhanced retry logic
+RUN set -e; \
+    npm config set fetch-retry-mintimeout 30000 && \
+    npm config set fetch-retry-maxtimeout 300000 && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-timeout 300000 && \
+    npm config set maxsockets 1 && \
+    npm config set progress false; \
+    for i in 1 2 3 4 5; do \
+        echo "Attempt $i: Installing production dependencies..."; \
+        if npm ci --only=production --no-audit --no-fund --prefer-offline; then \
+            echo "Production dependencies installed successfully on attempt $i"; \
+            break; \
+        else \
+            echo "Attempt $i failed, waiting before retry..."; \
+            if [ $i -eq 5 ]; then \
+                echo "All attempts failed"; \
+                exit 1; \
+            fi; \
+            sleep $((i * 15)); \
+            npm cache clean --force; \
+        fi; \
+    done && \
+    npm cache clean --force
+
+# Copy built application
+COPY --from=build /app/shared/dist ./shared/dist
+COPY --from=build /app/core-api/dist ./core-api/dist
+COPY --from=build /app/core-api/prisma ./core-api/prisma
+
+# Copy source for Prisma
+COPY shared ./shared
+COPY core-api ./core-api
+
+# Generate Prisma client
+WORKDIR /app/core-api
+RUN npx prisma generate
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S aurumvault -u 1001 -G nodejs
+
+# Change ownership
+RUN chown -R aurumvault:nodejs /app
+USER aurumvault
+
+WORKDIR /app
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
+
+# Production command
+CMD ["npm", "start", "--workspace=core-api"]

@@ -1,10 +1,15 @@
 // API Configuration
 export const API_CONFIG = {
-  VERSION: '1.0.0',
-  BASE_PATH: '/api/v1',
+  VERSION: "1.0.0",
+  BASE_PATH: "/api/v1",
   TIMEOUT: 30000,
-  MAX_REQUEST_SIZE: '10mb',
-  CORS_ORIGINS: ['http://localhost:3000', 'http://localhost:3002', 'https://aurumvault.com', 'https://admin.aurumvault.com'],
+  MAX_REQUEST_SIZE: "10mb",
+  CORS_ORIGINS: [
+    "http://localhost:3000",
+    "http://localhost:3002",
+    "https://aurumvault.com",
+    "https://admin.aurumvault.com",
+  ],
 } as const;
 
 // Database Configuration
@@ -17,8 +22,8 @@ export const DATABASE_CONFIG = {
 
 // Authentication Configuration
 export const AUTH_CONFIG = {
-  JWT_EXPIRES_IN: '15m',
-  REFRESH_TOKEN_EXPIRES_IN: '7d',
+  JWT_EXPIRES_IN: "15m",
+  REFRESH_TOKEN_EXPIRES_IN: "7d",
   BCRYPT_ROUNDS: 12,
   MAX_LOGIN_ATTEMPTS: 5,
   LOCKOUT_DURATION: 15 * 60 * 1000, // 15 minutes
@@ -37,15 +42,15 @@ export const RATE_LIMIT_CONFIG = {
 export const UPLOAD_CONFIG = {
   MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
   ALLOWED_MIME_TYPES: [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ],
-  UPLOAD_PATH: './uploads',
-  TEMP_PATH: './temp',
+  UPLOAD_PATH: "./uploads",
+  TEMP_PATH: "./temp",
 } as const;
 
 // Transaction Limits
@@ -68,7 +73,7 @@ export const TRANSACTION_LIMITS = {
 
 // Account Configuration
 export const ACCOUNT_CONFIG = {
-  ACCOUNT_NUMBER_PREFIX: 'AV',
+  ACCOUNT_NUMBER_PREFIX: "AV",
   ACCOUNT_NUMBER_LENGTH: 16,
   MIN_BALANCE: {
     CHECKING: 0,
@@ -90,7 +95,7 @@ export const ACCOUNT_CONFIG = {
 export const TRANSACTION_CONFIG = {
   MIN_AMOUNT: 0.01,
   MAX_AMOUNT: 1000000,
-  DEFAULT_CURRENCY: 'USD',
+  DEFAULT_CURRENCY: "USD",
   PROCESSING_TIMEOUT: 30000, // 30 seconds
   RETRY_ATTEMPTS: 3,
   BATCH_SIZE: 100,
@@ -115,20 +120,13 @@ export const WIRE_TRANSFER_CONFIG = {
     DOMESTIC: 1, // business days
     INTERNATIONAL: 3, // business days
   },
-  CUT_OFF_TIME: '15:00', // 3 PM
+  CUT_OFF_TIME: "15:00", // 3 PM
 } as const;
 
 // KYC Configuration
 export const KYC_CONFIG = {
-  REQUIRED_DOCUMENTS: [
-    'PASSPORT',
-    'DRIVERS_LICENSE',
-    'NATIONAL_ID',
-  ],
-  PROOF_OF_ADDRESS_DOCUMENTS: [
-    'UTILITY_BILL',
-    'BANK_STATEMENT',
-  ],
+  REQUIRED_DOCUMENTS: ["PASSPORT", "DRIVERS_LICENSE", "NATIONAL_ID"],
+  PROOF_OF_ADDRESS_DOCUMENTS: ["UTILITY_BILL", "BANK_STATEMENT"],
   DOCUMENT_EXPIRY_DAYS: 90,
   MAX_UPLOAD_SIZE: 5 * 1024 * 1024, // 5MB
   REVIEW_TIMEOUT_DAYS: 7,
@@ -146,7 +144,7 @@ export const SECURITY_CONFIG = {
   SESSION_SECURITY: {
     SECURE_COOKIES: true,
     HTTP_ONLY: true,
-    SAME_SITE: 'strict',
+    SAME_SITE: "strict",
   },
 } as const;
 
@@ -162,10 +160,10 @@ export const NOTIFICATION_CONFIG = {
 
 // Logging Configuration
 export const LOGGING_CONFIG = {
-  LEVEL: 'info',
+  LEVEL: "info",
   MAX_FILES: 10,
-  MAX_SIZE: '10m',
-  DATE_PATTERN: 'YYYY-MM-DD',
+  MAX_SIZE: "10m",
+  DATE_PATTERN: "YYYY-MM-DD",
   AUDIT_RETENTION_DAYS: 365,
   ERROR_RETENTION_DAYS: 90,
 } as const;
@@ -176,28 +174,28 @@ export const CACHE_CONFIG = {
   MAX_KEYS: 10000,
   CHECK_PERIOD: 600, // 10 minutes
   PREFIXES: {
-    USER: 'user:',
-    ACCOUNT: 'account:',
-    TRANSACTION: 'transaction:',
-    SESSION: 'session:',
-    RATE_LIMIT: 'rate_limit:',
+    USER: "user:",
+    ACCOUNT: "account:",
+    TRANSACTION: "transaction:",
+    SESSION: "session:",
+    RATE_LIMIT: "rate_limit:",
   },
 } as const;
 
 // External Services Configuration
 export const EXTERNAL_SERVICES = {
   PLAID: {
-    ENVIRONMENT: 'sandbox',
-    PRODUCTS: ['transactions', 'accounts', 'identity'],
-    COUNTRY_CODES: ['US', 'CA'],
+    ENVIRONMENT: "sandbox",
+    PRODUCTS: ["transactions", "accounts", "identity"],
+    COUNTRY_CODES: ["US", "CA"],
   },
   DWOLLA: {
-    ENVIRONMENT: 'sandbox',
-    WEBHOOK_SECRET: process.env['DWOLLA_WEBHOOK_SECRET'],
+    ENVIRONMENT: "sandbox",
+    WEBHOOK_SECRET: process.env["DWOLLA_WEBHOOK_SECRET"],
   },
   SENDGRID: {
-    FROM_EMAIL: 'noreply@aurumvault.com',
-    FROM_NAME: 'Aurum Vault',
+    FROM_EMAIL: "noreply@aurumvault.com",
+    FROM_NAME: "Aurum Vault",
   },
 } as const;
 
@@ -219,53 +217,53 @@ export const BUSINESS_RULES = {
 // Error Codes
 export const ERROR_CODES = {
   // Authentication Errors
-  INVALID_CREDENTIALS: 'AUTH_001',
-  TOKEN_EXPIRED: 'AUTH_002',
-  TOKEN_INVALID: 'AUTH_003',
-  ACCOUNT_LOCKED: 'AUTH_004',
-  ACCOUNT_SUSPENDED: 'AUTH_005',
-  
+  INVALID_CREDENTIALS: "AUTH_001",
+  TOKEN_EXPIRED: "AUTH_002",
+  TOKEN_INVALID: "AUTH_003",
+  ACCOUNT_LOCKED: "AUTH_004",
+  ACCOUNT_SUSPENDED: "AUTH_005",
+
   // Validation Errors
-  VALIDATION_FAILED: 'VAL_001',
-  REQUIRED_FIELD_MISSING: 'VAL_002',
-  INVALID_FORMAT: 'VAL_003',
-  VALUE_OUT_OF_RANGE: 'VAL_004',
-  
+  VALIDATION_FAILED: "VAL_001",
+  REQUIRED_FIELD_MISSING: "VAL_002",
+  INVALID_FORMAT: "VAL_003",
+  VALUE_OUT_OF_RANGE: "VAL_004",
+
   // Business Logic Errors
-  INSUFFICIENT_FUNDS: 'BIZ_001',
-  DAILY_LIMIT_EXCEEDED: 'BIZ_002',
-  MONTHLY_LIMIT_EXCEEDED: 'BIZ_003',
-  ACCOUNT_NOT_FOUND: 'BIZ_004',
-  TRANSACTION_FAILED: 'BIZ_005',
-  DUPLICATE_TRANSACTION: 'BIZ_006',
-  TRANSACTION_NOT_FOUND: 'BIZ_007',
-  WIRE_TRANSFER_NOT_FOUND: 'BIZ_008',
-  
+  INSUFFICIENT_FUNDS: "BIZ_001",
+  DAILY_LIMIT_EXCEEDED: "BIZ_002",
+  MONTHLY_LIMIT_EXCEEDED: "BIZ_003",
+  ACCOUNT_NOT_FOUND: "BIZ_004",
+  TRANSACTION_FAILED: "BIZ_005",
+  DUPLICATE_TRANSACTION: "BIZ_006",
+  TRANSACTION_NOT_FOUND: "BIZ_007",
+  WIRE_TRANSFER_NOT_FOUND: "BIZ_008",
+
   // System Errors
-  DATABASE_ERROR: 'SYS_001',
-  EXTERNAL_SERVICE_ERROR: 'SYS_002',
-  INTERNAL_SERVER_ERROR: 'SYS_003',
-  SERVICE_UNAVAILABLE: 'SYS_004',
-  RESOURCE_NOT_FOUND: 'SYS_005',
-  OPERATION_NOT_ALLOWED: 'SYS_006',
-  
+  DATABASE_ERROR: "SYS_001",
+  EXTERNAL_SERVICE_ERROR: "SYS_002",
+  INTERNAL_SERVER_ERROR: "SYS_003",
+  SERVICE_UNAVAILABLE: "SYS_004",
+  RESOURCE_NOT_FOUND: "SYS_005",
+  OPERATION_NOT_ALLOWED: "SYS_006",
+
   // File Upload Errors
-  FILE_TOO_LARGE: 'FILE_001',
-  INVALID_FILE_TYPE: 'FILE_002',
-  UPLOAD_FAILED: 'FILE_003',
-  
+  FILE_TOO_LARGE: "FILE_001",
+  INVALID_FILE_TYPE: "FILE_002",
+  UPLOAD_FAILED: "FILE_003",
+
   // KYC Errors
-  DOCUMENT_REQUIRED: 'KYC_001',
-  DOCUMENT_EXPIRED: 'KYC_002',
-  VERIFICATION_FAILED: 'KYC_003',
-  
+  DOCUMENT_REQUIRED: "KYC_001",
+  DOCUMENT_EXPIRED: "KYC_002",
+  VERIFICATION_FAILED: "KYC_003",
+
   // User Management Errors
-  USER_ALREADY_EXISTS: 'USER_001',
-  USER_NOT_FOUND: 'USER_002',
-  ACCOUNT_INACTIVE: 'USER_003',
-  KYC_REQUIRED: 'USER_004',
-  INSUFFICIENT_PERMISSIONS: 'USER_005',
-  RATE_LIMIT_EXCEEDED: 'USER_006',
+  USER_ALREADY_EXISTS: "USER_001",
+  USER_NOT_FOUND: "USER_002",
+  ACCOUNT_INACTIVE: "USER_003",
+  KYC_REQUIRED: "USER_004",
+  INSUFFICIENT_PERMISSIONS: "USER_005",
+  RATE_LIMIT_EXCEEDED: "USER_006",
 } as const;
 
 // HTTP Status Codes
@@ -291,31 +289,55 @@ export const REGEX_PATTERNS = {
   ACCOUNT_NUMBER: /^AV\d{14}$/,
   SWIFT_CODE: /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/,
   IBAN: /^[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}$/,
-  PASSWORD: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+  PASSWORD:
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
 } as const;
 
 // Currency Codes
 export const SUPPORTED_CURRENCIES = [
-  'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD'
+  "USD",
+  "EUR",
+  "GBP",
+  "JPY",
+  "CAD",
+  "AUD",
+  "CHF",
+  "CNY",
+  "SEK",
+  "NZD",
 ] as const;
 
 // Country Codes
 export const SUPPORTED_COUNTRIES = [
-  'US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'SE', 'NO', 'DK', 'FI'
+  "US",
+  "CA",
+  "GB",
+  "DE",
+  "FR",
+  "IT",
+  "ES",
+  "NL",
+  "BE",
+  "AT",
+  "CH",
+  "SE",
+  "NO",
+  "DK",
+  "FI",
 ] as const;
 
 // Time Zones
 export const SUPPORTED_TIMEZONES = [
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'Europe/London',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Asia/Tokyo',
-  'Asia/Shanghai',
-  'Australia/Sydney',
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Asia/Tokyo",
+  "Asia/Shanghai",
+  "Australia/Sydney",
 ] as const;
 
 // Country Options for frontend compatibility
@@ -339,15 +361,15 @@ export const countryOptions = [
 ] as const;
 
 // External Service Environment Configuration
-export const dwollaEnvironment: string = process.env['DWOLLA_ENV'] || "sandbox";
+export const dwollaEnvironment: string = process.env["DWOLLA_ENV"] || "sandbox";
 
 // Additional Error Codes
 export const ADDITIONAL_ERROR_CODES = {
   // User Management
-  USER_ALREADY_EXISTS: 'USER_001',
-  USER_NOT_FOUND: 'USER_002',
-  ACCOUNT_INACTIVE: 'USER_003',
-  KYC_REQUIRED: 'USER_004',
-  INSUFFICIENT_PERMISSIONS: 'USER_005',
-  RATE_LIMIT_EXCEEDED: 'USER_006',
+  USER_ALREADY_EXISTS: "USER_001",
+  USER_NOT_FOUND: "USER_002",
+  ACCOUNT_INACTIVE: "USER_003",
+  KYC_REQUIRED: "USER_004",
+  INSUFFICIENT_PERMISSIONS: "USER_005",
+  RATE_LIMIT_EXCEEDED: "USER_006",
 } as const;

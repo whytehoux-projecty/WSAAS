@@ -355,7 +355,14 @@ export default async function accountRoutes(fastify: FastifyInstance) {
 
         const updatedAccount = await prisma.account.update({
           where: { id: accountId },
-          data: validatedData,
+          // Avoid passing undefined properties to Prisma
+          data: (() => {
+            const data: any = {};
+            if (validatedData.status !== undefined) data.status = validatedData.status;
+            if (validatedData.dailyLimit !== undefined) data.dailyLimit = validatedData.dailyLimit;
+            if (validatedData.monthlyLimit !== undefined) data.monthlyLimit = validatedData.monthlyLimit;
+            return data;
+          })(),
           select: {
             id: true,
             accountNumber: true,
@@ -453,11 +460,11 @@ export default async function accountRoutes(fastify: FastifyInstance) {
           },
         });
 
-        const pendingAmount = pendingTransactions._sum.amount || 0;
-        const availableBalance = account.balance - pendingAmount;
+        const pendingAmount = pendingTransactions._sum.amount ? Number(pendingTransactions._sum.amount) : 0;
+        const availableBalance = Number(account.balance) - pendingAmount;
 
         reply.send({
-          balance: account.balance,
+          balance: Number(account.balance),
           currency: account.currency,
           availableBalance,
           pendingTransactions: pendingAmount,
@@ -759,7 +766,14 @@ export const updateAccount = async (request: FastifyRequest, reply: FastifyReply
 
     const updatedAccount = await prisma.account.update({
       where: { id: accountId },
-      data: updateData,
+      // Avoid passing undefined properties to Prisma
+      data: (() => {
+        const data: any = {};
+        if (updateData.status !== undefined) data.status = updateData.status;
+        if (updateData.dailyLimit !== undefined) data.dailyLimit = updateData.dailyLimit;
+        if (updateData.monthlyLimit !== undefined) data.monthlyLimit = updateData.monthlyLimit;
+        return data;
+      })(),
       select: {
         id: true,
         accountNumber: true,
@@ -827,11 +841,11 @@ export const getAccountBalance = async (request: FastifyRequest, reply: FastifyR
       },
     });
 
-    const pendingAmount = pendingTransactions._sum.amount || 0;
-    const availableBalance = account.balance - pendingAmount;
+    const pendingAmount = pendingTransactions._sum.amount ? Number(pendingTransactions._sum.amount) : 0;
+    const availableBalance = Number(account.balance) - pendingAmount;
 
     reply.send({
-      balance: account.balance,
+      balance: Number(account.balance),
       currency: account.currency,
       availableBalance,
       pendingTransactions: pendingAmount,

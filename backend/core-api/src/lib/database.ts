@@ -7,7 +7,7 @@ class DatabaseManager {
   private _prisma: PrismaClient | null = null;
   private _redis: RedisClientType | null = null;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): DatabaseManager {
     if (!DatabaseManager.instance) {
@@ -57,10 +57,21 @@ class DatabaseManager {
       console.log('✅ Connected to database');
 
       // Connect to Redis (optional in development)
+      // Skip Redis in development if SKIP_REDIS is set or if connection fails
+      if (config.NODE_ENV === 'development' && process.env['SKIP_REDIS'] === 'true') {
+        console.log('⚠️  Redis skipped (SKIP_REDIS=true)');
+        return;
+      }
+
       try {
-        if (!this.redis.isOpen) {
-          await this.redis.connect();
-          console.log('✅ Connected to Redis cache');
+        // Only try Redis if we're in production or explicitly requested
+        if (config.NODE_ENV === 'production' || process.env['USE_REDIS'] === 'true') {
+          if (!this.redis.isOpen) {
+            await this.redis.connect();
+            console.log('✅ Connected to Redis cache');
+          }
+        } else {
+          console.log('⚠️  Redis skipped in development mode');
         }
       } catch (redisError) {
         if (config.NODE_ENV === 'development') {
@@ -97,9 +108,9 @@ class DatabaseManager {
     database: 'connected' | 'disconnected';
     cache: 'connected' | 'disconnected';
   }> {
-    const result = {
-      database: 'disconnected' as const,
-      cache: 'disconnected' as const,
+    let result: { database: 'connected' | 'disconnected'; cache: 'connected' | 'disconnected' } = {
+      database: 'disconnected',
+      cache: 'disconnected',
     };
 
     try {

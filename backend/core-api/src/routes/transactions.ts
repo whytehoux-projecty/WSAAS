@@ -12,6 +12,7 @@ const transferSchema = z.object({
   currency: z.string().default('USD'),
   description: z.string().min(1),
   reference: z.string().optional(),
+  category: z.string().optional(),
 });
 
 export default async function transactionRoutes(fastify: FastifyInstance) {
@@ -550,7 +551,7 @@ export default async function transactionRoutes(fastify: FastifyInstance) {
           });
         }
 
-        if (fromAccount.balance < amount) {
+        if (Number(fromAccount.balance) < amount) {
           return reply.status(400).send({
             error: 'Insufficient Funds',
             message: 'Source account balance is insufficient for this transfer',
@@ -785,6 +786,7 @@ export const getTransactions = async (request: FastifyRequest, reply: FastifyRep
       accountId,
       type,
       status,
+      category,
       startDate,
       endDate,
     } = request.query as any;
@@ -810,6 +812,7 @@ export const getTransactions = async (request: FastifyRequest, reply: FastifyRep
 
     if (type) where.type = type;
     if (status) where.status = status;
+    if (category) where.category = category;
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = new Date(startDate);
@@ -887,7 +890,7 @@ export const getTransaction = async (request: FastifyRequest, reply: FastifyRepl
 export const createDeposit = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const user = request.user as any;
-    const { accountId, amount, description } = request.body as any;
+    const { accountId, amount, description, category } = request.body as any;
 
     // Verify account ownership
     const account = await prisma.account.findFirst({
@@ -909,6 +912,7 @@ export const createDeposit = async (request: FastifyRequest, reply: FastifyReply
         currency: 'USD',
         status: 'COMPLETED',
         description,
+        category: category || 'DEPOSIT',
         reference: `DEP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         processedAt: new Date(),
       },
@@ -935,7 +939,7 @@ export const createDeposit = async (request: FastifyRequest, reply: FastifyReply
 export const createWithdrawal = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const user = request.user as any;
-    const { accountId, amount, description } = request.body as any;
+    const { accountId, amount, description, category } = request.body as any;
 
     // Verify account ownership and sufficient balance
     const account = await prisma.account.findFirst({
@@ -964,6 +968,7 @@ export const createWithdrawal = async (request: FastifyRequest, reply: FastifyRe
         currency: 'USD',
         status: 'COMPLETED',
         description,
+        category: category || 'WITHDRAWAL',
         reference: `WTH-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         processedAt: new Date(),
       },
@@ -991,7 +996,7 @@ export const createTransfer = async (request: FastifyRequest, reply: FastifyRepl
   try {
     const user = request.user as any;
     const transferData = transferSchema.parse(request.body);
-    const { fromAccountId, toAccountId, amount, description } = transferData;
+    const { fromAccountId, toAccountId, amount, description, category } = transferData;
 
     // Verify source account ownership
     const fromAccount = await prisma.account.findFirst({
@@ -1018,7 +1023,7 @@ export const createTransfer = async (request: FastifyRequest, reply: FastifyRepl
     }
 
     // Check sufficient balance
-    if (fromAccount.balance < amount) {
+    if (Number(fromAccount.balance) < amount) {
       return reply.status(400).send({
         error: 'Insufficient Funds',
         message: 'Source account balance is insufficient for this transfer',
@@ -1037,6 +1042,7 @@ export const createTransfer = async (request: FastifyRequest, reply: FastifyRepl
           currency: 'USD',
           status: 'COMPLETED',
           description: `Transfer to ${toAccount.accountNumber}: ${description}`,
+          category: category || 'TRANSFER',
           reference,
           processedAt: new Date(),
         },
@@ -1050,6 +1056,7 @@ export const createTransfer = async (request: FastifyRequest, reply: FastifyRepl
           currency: 'USD',
           status: 'COMPLETED',
           description: `Transfer from ${fromAccount.accountNumber}: ${description}`,
+          category: category || 'TRANSFER',
           reference,
           processedAt: new Date(),
         },
@@ -1181,6 +1188,42 @@ export const getTransactionStatistics = async (request: FastifyRequest, reply: F
     reply.status(500).send({
       error: 'Internal Server Error',
       message: 'Failed to fetch transaction statistics',
+    });
+  }
+};
+
+export const updateTransactionCategory = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const user = request.user as any;
+    const { transactionId } = request.params as { transactionId: string };
+    const { category } = request.body as { category: string };
+
+    if (!category) {
+      return reply.status(400).send({ error: 'Validation Error', message: 'Category is required' });
+    }
+
+    // Verify ownership
+    const transaction = await prisma.transaction.findFirst({
+      where: {
+        id: transactionId,
+        account: { userId: user.userId }
+      }
+    });
+
+    if (!transaction) {
+      return reply.status(404).send({ error: 'Not Found', message: 'Transaction not found' });
+    }
+
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: transactionId },
+      data: { category }
+    });
+
+    reply.send({ message: 'Category updated', transaction: updatedTransaction });
+  } catch (error) {
+    reply.status(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to update transaction category',
     });
   }
 };

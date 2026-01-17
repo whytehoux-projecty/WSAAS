@@ -209,40 +209,6 @@ export const getKYCNextSteps = async (request: FastifyRequest, reply: FastifyRep
   }
 };
 
-/**
- * Helper function to determine next steps for KYC completion
- */
-function getKYCNextStepsHelper(
-  kycStatus: string,
-  missingDocuments: string[],
-  pendingDocuments: any[],
-  rejectedDocuments: any[]
-): string[] {
-  const steps: string[] = [];
-
-  if (kycStatus === 'VERIFIED') {
-    return ['KYC verification complete'];
-  }
-
-  if (missingDocuments.length > 0) {
-    steps.push(`Upload missing documents: ${missingDocuments.join(', ')}`);
-  }
-
-  if (rejectedDocuments.length > 0) {
-    steps.push('Re-upload rejected documents with corrections');
-  }
-
-  if (pendingDocuments.length > 0) {
-    steps.push('Wait for document review (typically 1-3 business days)');
-  }
-
-  if (steps.length === 0) {
-    steps.push('All documents uploaded - awaiting final verification');
-  }
-
-  return steps;
-}
-
 // Default export function to register routes
 export default async function kycRoutes(fastify: FastifyInstance) {
   // Get KYC documents for a user

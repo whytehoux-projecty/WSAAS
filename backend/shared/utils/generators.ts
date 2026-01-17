@@ -1,5 +1,5 @@
-import { v4 as uuidv4 } from 'uuid';
-import { ACCOUNT_CONFIG } from '../constants';
+import { v4 as uuidv4 } from "uuid";
+import { ACCOUNT_CONFIG } from "../constants";
 
 /**
  * Generate a unique account number
@@ -7,13 +7,13 @@ import { ACCOUNT_CONFIG } from '../constants';
 export const generateAccountNumber = (): string => {
   const prefix = ACCOUNT_CONFIG.ACCOUNT_NUMBER_PREFIX;
   const length = ACCOUNT_CONFIG.ACCOUNT_NUMBER_LENGTH - prefix.length;
-  
+
   // Generate random digits
-  let number = '';
+  let number = "";
   for (let i = 0; i < length; i++) {
     number += Math.floor(Math.random() * 10).toString();
   }
-  
+
   return prefix + number;
 };
 
@@ -21,34 +21,35 @@ export const generateAccountNumber = (): string => {
  * Generate a unique transaction ID
  */
 export const generateTransactionId = (): string => {
-  return `TXN_${uuidv4().replace(/-/g, '').toUpperCase()}`;
+  return `TXN_${uuidv4().replace(/-/g, "").toUpperCase()}`;
 };
 
 /**
  * Generate a unique wire transfer reference
  */
 export const generateWireTransferReference = (): string => {
-  return `WIRE_${uuidv4().replace(/-/g, '').toUpperCase().substring(0, 16)}`;
+  return `WIRE_${uuidv4().replace(/-/g, "").toUpperCase().substring(0, 16)}`;
 };
 
 /**
  * Generate a unique session ID
  */
 export const generateSessionId = (): string => {
-  return `SESS_${uuidv4().replace(/-/g, '').toUpperCase()}`;
+  return `SESS_${uuidv4().replace(/-/g, "").toUpperCase()}`;
 };
 
 /**
  * Generate a secure random string
  */
 export const generateSecureRandomString = (length: number = 32): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+
   for (let i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  
+
   return result;
 };
 
@@ -56,7 +57,7 @@ export const generateSecureRandomString = (length: number = 32): string => {
  * Generate a numeric OTP
  */
 export const generateOTP = (length: number = 6): string => {
-  let otp = '';
+  let otp = "";
   for (let i = 0; i < length; i++) {
     otp += Math.floor(Math.random() * 10).toString();
   }
@@ -66,15 +67,18 @@ export const generateOTP = (length: number = 6): string => {
 /**
  * Generate a unique file name
  */
-export const generateFileName = (originalName: string, prefix?: string): string => {
+export const generateFileName = (
+  originalName: string,
+  prefix?: string,
+): string => {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
-  const extension = originalName.split('.').pop();
-  const baseName = originalName.split('.').slice(0, -1).join('.');
-  
-  const cleanBaseName = baseName.replace(/[^a-zA-Z0-9]/g, '_');
-  const prefixStr = prefix ? `${prefix}_` : '';
-  
+  const extension = originalName.split(".").pop();
+  const baseName = originalName.split(".").slice(0, -1).join(".");
+
+  const cleanBaseName = baseName.replace(/[^a-zA-Z0-9]/g, "_");
+  const prefixStr = prefix ? `${prefix}_` : "";
+
   return `${prefixStr}${cleanBaseName}_${timestamp}_${random}.${extension}`;
 };
 
@@ -117,7 +121,7 @@ export const generateCorrelationId = (): string => {
  * Generate a unique audit log ID
  */
 export const generateAuditLogId = (): string => {
-  return `AUDIT_${uuidv4().replace(/-/g, '').toUpperCase()}`;
+  return `AUDIT_${uuidv4().replace(/-/g, "").toUpperCase()}`;
 };
 
 /**
@@ -131,14 +135,14 @@ export const generateTempToken = (length: number = 64): string => {
  * Generate a unique document ID
  */
 export const generateDocumentId = (): string => {
-  return `DOC_${uuidv4().replace(/-/g, '').toUpperCase()}`;
+  return `DOC_${uuidv4().replace(/-/g, "").toUpperCase()}`;
 };
 
 /**
  * Generate a unique notification ID
  */
 export const generateNotificationId = (): string => {
-  return `NOTIF_${uuidv4().replace(/-/g, '').toUpperCase()}`;
+  return `NOTIF_${uuidv4().replace(/-/g, "").toUpperCase()}`;
 };
 
 /**
@@ -146,7 +150,7 @@ export const generateNotificationId = (): string => {
  */
 export const generateExternalReferenceId = (service: string): string => {
   const servicePrefix = service.toUpperCase().substring(0, 4);
-  return `${servicePrefix}_${uuidv4().replace(/-/g, '').toUpperCase()}`;
+  return `${servicePrefix}_${uuidv4().replace(/-/g, "").toUpperCase()}`;
 };
 
 /**
@@ -156,11 +160,11 @@ export const maskAccountNumber = (accountNumber: string): string => {
   if (accountNumber.length <= 4) {
     return accountNumber;
   }
-  
+
   const visibleDigits = 4;
-  const maskedPortion = '*'.repeat(accountNumber.length - visibleDigits);
+  const maskedPortion = "*".repeat(accountNumber.length - visibleDigits);
   const visiblePortion = accountNumber.slice(-visibleDigits);
-  
+
   return maskedPortion + visiblePortion;
 };
 
@@ -168,20 +172,20 @@ export const maskAccountNumber = (accountNumber: string): string => {
  * Generate a masked email for display
  */
 export const maskEmail = (email: string): string => {
-  const [localPart, domain] = email.split('@');
-  
+  const [localPart, domain] = email.split("@");
+
   if (!localPart || !domain) {
     return email; // Return original if invalid format
   }
-  
+
   if (localPart.length <= 2) {
     return `${localPart[0]}*@${domain}`;
   }
-  
+
   const visibleStart = localPart.substring(0, 2);
   const visibleEnd = localPart.slice(-1);
-  const maskedMiddle = '*'.repeat(Math.max(1, localPart.length - 3));
-  
+  const maskedMiddle = "*".repeat(Math.max(1, localPart.length - 3));
+
   return `${visibleStart}${maskedMiddle}${visibleEnd}@${domain}`;
 };
 
@@ -190,18 +194,20 @@ export const maskEmail = (email: string): string => {
  */
 export const maskPhoneNumber = (phoneNumber: string): string => {
   // Remove all non-digit characters
-  const digits = phoneNumber.replace(/\D/g, '');
-  
+  const digits = phoneNumber.replace(/\D/g, "");
+
   if (digits.length === 10) {
     // US format: (XXX) XXX-1234
     return `(${digits.substring(0, 3)}) XXX-${digits.substring(6)}`;
-  } else if (digits.length === 11 && digits.startsWith('1')) {
+  } else if (digits.length === 11 && digits.startsWith("1")) {
     // US format with country code: +1 (XXX) XXX-1234
     return `+1 (${digits.substring(1, 4)}) XXX-${digits.substring(7)}`;
   } else {
     // Generic format: show last 4 digits
     const visibleDigits = Math.min(4, digits.length);
-    const maskedPortion = 'X'.repeat(Math.max(0, digits.length - visibleDigits));
+    const maskedPortion = "X".repeat(
+      Math.max(0, digits.length - visibleDigits),
+    );
     const visiblePortion = digits.slice(-visibleDigits);
     return maskedPortion + visiblePortion;
   }
@@ -211,13 +217,13 @@ export const maskPhoneNumber = (phoneNumber: string): string => {
  * Generate a masked SSN for display
  */
 export const maskSSN = (ssn: string): string => {
-  const digits = ssn.replace(/\D/g, '');
-  
+  const digits = ssn.replace(/\D/g, "");
+
   if (digits.length === 9) {
     return `XXX-XX-${digits.substring(5)}`;
   }
-  
-  return 'XXX-XX-XXXX';
+
+  return "XXX-XX-XXXX";
 };
 
 /**
@@ -254,7 +260,9 @@ export const generateDeviceFingerprint = (): string => {
  * Validate and format account number
  */
 export const validateAccountNumber = (accountNumber: string): boolean => {
-  const regex = new RegExp(`^${ACCOUNT_CONFIG.ACCOUNT_NUMBER_PREFIX}\\d{${ACCOUNT_CONFIG.ACCOUNT_NUMBER_LENGTH - ACCOUNT_CONFIG.ACCOUNT_NUMBER_PREFIX.length}}$`);
+  const regex = new RegExp(
+    `^${ACCOUNT_CONFIG.ACCOUNT_NUMBER_PREFIX}\\d{${ACCOUNT_CONFIG.ACCOUNT_NUMBER_LENGTH - ACCOUNT_CONFIG.ACCOUNT_NUMBER_PREFIX.length}}$`,
+  );
   return regex.test(accountNumber);
 };
 
@@ -266,7 +274,7 @@ export const generateBackupCode = (): string => {
   for (let i = 0; i < 4; i++) {
     segments.push(Math.random().toString(36).substring(2, 6).toUpperCase());
   }
-  return segments.join('-');
+  return segments.join("-");
 };
 
 /**

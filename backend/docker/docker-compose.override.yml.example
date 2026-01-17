@@ -1,0 +1,49 @@
+# Docker Compose Override File for Individual Developer Customization
+# Copy this file to docker-compose.override.yml and customize as needed
+# This file is ignored by Git to allow personal development preferences
+
+version: '3.8'
+
+services:
+  # Example: Custom port mappings
+  # core-api-dev:
+  #   ports:
+  #     - "3010:3000"  # Use port 3010 instead of 3000
+  #     - "9239:9229"  # Use port 9239 for debugging
+
+  # Example: Additional environment variables
+  # core-api-dev:
+  #   environment:
+  #     - LOG_LEVEL=debug
+  #     - CUSTOM_VAR=value
+
+  # Example: Mount additional volumes
+  # core-api-dev:
+  #   volumes:
+  #     - ./custom-config:/app/config
+
+  # Example: Resource limits
+  # postgres:
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 2G
+  #         cpus: '1.0'
+
+  # Example: Custom command override
+  # admin-interface-dev:
+  #   command: npm run dev:custom
+
+  # Example: Add extra hosts
+  # core-api-dev:
+  #   extra_hosts:
+  #     - "api.local:127.0.0.1"
+
+# Example: Additional services for specific development needs
+  # custom-service:
+  #   image: custom/image:latest
+  #   container_name: custom-service
+  #   ports:
+  #     - "8080:8080"
+  #   networks:
+  #     - aurumvault-dev-network

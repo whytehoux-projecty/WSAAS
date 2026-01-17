@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { RedisClientType } from 'redis';
 
 export abstract class BaseService {
@@ -50,9 +50,9 @@ export abstract class BaseService {
 
   // Database transaction helper
   protected async withTransaction<T>(
-    callback: (tx: PrismaClient) => Promise<T>
+    callback: (tx: Prisma.TransactionClient) => Promise<T>
   ): Promise<T> {
-    return await this.db.$transaction(callback);
+    return await this.db.$transaction(async (tx) => callback(tx));
   }
 
   // Pagination helper

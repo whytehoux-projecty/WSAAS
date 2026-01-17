@@ -1,0 +1,67 @@
+# Netlify Configuration for AURUM VAULT Corporate Website
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  # Build command
+  command = "npm run build"
+  
+  # Output directory
+  publish = ".next"
+  
+  # Node version
+  [build.environment]
+    NODE_VERSION = "18.19.0"
+    NEXT_TELEMETRY_DISABLED = "1"
+
+# Production context (default)
+[context.production]
+  [context.production.environment]
+    NODE_ENV = "production"
+
+# Deploy Preview context
+[context.deploy-preview]
+  [context.deploy-preview.environment]
+    NODE_ENV = "production"
+
+# Branch deploy context
+[context.branch-deploy]
+  [context.branch-deploy.environment]
+    NODE_ENV = "production"
+
+# Redirects and rewrites
+# Note: API calls should go to ngrok URLs (set in environment variables)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# Cache static assets
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Next.js specific configuration
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Environment variables documentation
+# Set these in Netlify UI or via CLI:
+# - NEXT_PUBLIC_API_URL: ngrok backend URL (e.g., https://abc123.ngrok.io)
+# - NEXT_PUBLIC_PORTAL_URL: ngrok portal URL (e.g., https://def456.ngrok.io)
+# - NEXT_PUBLIC_PORTAL_HEALTH_URL: backend health endpoint (e.g., https://abc123.ngrok.io/api/portal/health)

@@ -35,12 +35,12 @@ interface EnvironmentConfig {
   SMTP_PORT?: number;
   SMTP_USER?: string;
   SMTP_PASS?: string;
-  
+
   AWS_ACCESS_KEY_ID?: string;
   AWS_SECRET_ACCESS_KEY?: string;
   AWS_REGION?: string;
   AWS_S3_BUCKET?: string;
-  
+
   TWILIO_ACCOUNT_SID?: string;
   TWILIO_AUTH_TOKEN?: string;
   TWILIO_PHONE_NUMBER?: string;
@@ -48,7 +48,7 @@ interface EnvironmentConfig {
 
 const getEnvironmentConfig = (): EnvironmentConfig => {
   const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
-  
+
   // Check for required environment variables
   for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
@@ -73,7 +73,10 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     BCRYPT_ROUNDS: parseInt(process.env['BCRYPT_ROUNDS'] || '12'),
 
     // External Services
-    ALLOWED_ORIGINS: process.env['ALLOWED_ORIGINS']?.split(',') || ['http://localhost:3000'],
+    ALLOWED_ORIGINS: (process.env['ALLOWED_ORIGINS'] || 'http://localhost:3000')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean),
 
     // Security Configuration
     RATE_LIMIT_MAX: parseInt(process.env['RATE_LIMIT_MAX'] || '100'),
@@ -83,21 +86,31 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     MAX_FILE_SIZE: parseInt(process.env['MAX_FILE_SIZE'] || '10485760'), // 10MB
     UPLOAD_PATH: process.env['UPLOAD_PATH'] || './uploads',
 
-    // Optional External Services
-    SMTP_HOST: process.env['SMTP_HOST'],
-    SMTP_PORT: process.env['SMTP_PORT'] ? parseInt(process.env['SMTP_PORT']) : undefined,
-    SMTP_USER: process.env['SMTP_USER'],
-    SMTP_PASS: process.env['SMTP_PASS'],
-    
-    AWS_ACCESS_KEY_ID: process.env['AWS_ACCESS_KEY_ID'],
-    AWS_SECRET_ACCESS_KEY: process.env['AWS_SECRET_ACCESS_KEY'],
-    AWS_REGION: process.env['AWS_REGION'],
-    AWS_S3_BUCKET: process.env['AWS_S3_BUCKET'],
-    
-    TWILIO_ACCOUNT_SID: process.env['TWILIO_ACCOUNT_SID'],
-    TWILIO_AUTH_TOKEN: process.env['TWILIO_AUTH_TOKEN'],
-    TWILIO_PHONE_NUMBER: process.env['TWILIO_PHONE_NUMBER'],
-  };
+    // Optional External Services (only include when defined)
+    ...(process.env['SMTP_HOST'] ? { SMTP_HOST: process.env['SMTP_HOST'] } : {}),
+    ...(process.env['SMTP_PORT'] ? { SMTP_PORT: parseInt(process.env['SMTP_PORT']) } : {}),
+    ...(process.env['SMTP_USER'] ? { SMTP_USER: process.env['SMTP_USER'] } : {}),
+    ...(process.env['SMTP_PASS'] ? { SMTP_PASS: process.env['SMTP_PASS'] } : {}),
+
+    ...(process.env['AWS_ACCESS_KEY_ID']
+      ? { AWS_ACCESS_KEY_ID: process.env['AWS_ACCESS_KEY_ID'] }
+      : {}),
+    ...(process.env['AWS_SECRET_ACCESS_KEY']
+      ? { AWS_SECRET_ACCESS_KEY: process.env['AWS_SECRET_ACCESS_KEY'] }
+      : {}),
+    ...(process.env['AWS_REGION'] ? { AWS_REGION: process.env['AWS_REGION'] } : {}),
+    ...(process.env['AWS_S3_BUCKET'] ? { AWS_S3_BUCKET: process.env['AWS_S3_BUCKET'] } : {}),
+
+    ...(process.env['TWILIO_ACCOUNT_SID']
+      ? { TWILIO_ACCOUNT_SID: process.env['TWILIO_ACCOUNT_SID'] }
+      : {}),
+    ...(process.env['TWILIO_AUTH_TOKEN']
+      ? { TWILIO_AUTH_TOKEN: process.env['TWILIO_AUTH_TOKEN'] }
+      : {}),
+    ...(process.env['TWILIO_PHONE_NUMBER']
+      ? { TWILIO_PHONE_NUMBER: process.env['TWILIO_PHONE_NUMBER'] }
+      : {}),
+  } as EnvironmentConfig;
 };
 
 export const config = getEnvironmentConfig();

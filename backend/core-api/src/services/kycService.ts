@@ -2,7 +2,6 @@ import { PrismaClient } from '@prisma/client';
 import { ERROR_CODES, KYC_CONFIG } from '@shared/index';
 import crypto from 'crypto';
 import fs from 'fs/promises';
-import path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -24,17 +23,22 @@ export class KycService {
     const { documentType, fileName, filePath, fileSize, mimeType, fileBuffer } = documentData;
 
     // Validate document type
-    if (!KYC_CONFIG.ALLOWED_DOCUMENT_TYPES.includes(documentType)) {
+    const allowedDocumentTypes = [
+      ...KYC_CONFIG.REQUIRED_DOCUMENTS,
+      ...KYC_CONFIG.PROOF_OF_ADDRESS_DOCUMENTS,
+    ] as string[];
+    if (!allowedDocumentTypes.includes(documentType)) {
       throw new Error('Invalid document type');
     }
 
     // Validate file size
-    if (fileSize > KYC_CONFIG.MAX_FILE_SIZE) {
-      throw new Error(`File size exceeds maximum limit of ${KYC_CONFIG.MAX_FILE_SIZE} bytes`);
+    if (fileSize > KYC_CONFIG.MAX_UPLOAD_SIZE) {
+      throw new Error(`File size exceeds maximum limit of ${KYC_CONFIG.MAX_UPLOAD_SIZE} bytes`);
     }
 
     // Validate MIME type
-    if (!KYC_CONFIG.ALLOWED_MIME_TYPES.includes(mimeType)) {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!allowedMimeTypes.includes(mimeType)) {
       throw new Error('Invalid file type');
     }
 
@@ -143,7 +147,7 @@ export class KycService {
     });
 
     if (!document) {
-      throw new Error(ERROR_CODES.DOCUMENT_NOT_FOUND);
+      throw new Error(ERROR_CODES.RESOURCE_NOT_FOUND);
     }
 
     return document;
@@ -158,7 +162,7 @@ export class KycService {
     });
 
     if (!document) {
-      throw new Error(ERROR_CODES.DOCUMENT_NOT_FOUND);
+      throw new Error(ERROR_CODES.RESOURCE_NOT_FOUND);
     }
 
     if (document.verificationStatus === 'VERIFIED') {
@@ -310,7 +314,7 @@ export class KycService {
     });
 
     if (!document) {
-      throw new Error(ERROR_CODES.DOCUMENT_NOT_FOUND);
+      throw new Error(ERROR_CODES.RESOURCE_NOT_FOUND);
     }
 
     // Update document
@@ -320,8 +324,8 @@ export class KycService {
         verificationStatus: decision.status,
         verifiedBy: adminUserId,
         verifiedAt: new Date(),
-        rejectionReason: decision.rejectionReason,
-        expiresAt: decision.expiresAt,
+        rejectionReason: decision.rejectionReason ?? null,
+        expiresAt: decision.expiresAt ?? null,
       },
     });
 

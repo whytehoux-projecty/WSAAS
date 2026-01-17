@@ -5,20 +5,29 @@ import * as transactionRoutes from './transactions';
 import * as userRoutes from './users';
 import * as kycRoutes from './kyc';
 import * as wireTransferRoutes from './wire-transfers';
-import * as systemRoutes from './system';
+import * as contactRoutes from './contact';
+import * as applicationRoutes from './account-applications';
+import * as beneficiaryRoutes from './beneficiaries';
+import statementRoutes from './statements';
+import * as cardRoutes from './cards';
+import * as billRoutes from './bills';
+import systemRoutes from './system';
 import { authenticateToken, requireKYCVerified, requireActiveAccount } from '../middleware/auth';
 
 export default async function routes(fastify: FastifyInstance) {
   // System routes (public)
-  fastify.get('/health', systemRoutes.healthCheck);
-  fastify.get('/info', systemRoutes.getApiInfo);
-  fastify.get('/statistics', systemRoutes.getApiStatistics);
+  await fastify.register(systemRoutes);
 
   // Public routes (no authentication required)
   fastify.post('/auth/register', authRoutes.register);
   fastify.post('/auth/login', authRoutes.login);
   fastify.post('/auth/logout', authRoutes.logout);
   fastify.get('/auth/verify-token', authRoutes.verifyToken);
+  fastify.post('/auth/refresh', authRoutes.refreshToken);
+
+  // Public Forms
+  fastify.post('/contact', contactRoutes.submitContactForm);
+  fastify.post('/account-applications', applicationRoutes.submitApplication);
 
   // Protected routes (authentication required)
   fastify.register(async function (fastify) {
@@ -29,6 +38,12 @@ export default async function routes(fastify: FastifyInstance) {
     fastify.get('/auth/profile', authRoutes.getProfile);
     fastify.put('/auth/profile', authRoutes.updateProfile);
     fastify.post('/auth/change-password', authRoutes.changePassword);
+
+    // Route Aliases
+    fastify.get('/auth/me', authRoutes.getProfile);
+    fastify.get('/profile', authRoutes.getProfile);
+    fastify.put('/profile', authRoutes.updateProfile);
+    fastify.post('/profile/change-password', authRoutes.changePassword);
 
     // User routes
     fastify.get('/users', userRoutes.getUsers);
@@ -53,7 +68,29 @@ export default async function routes(fastify: FastifyInstance) {
     fastify.post('/transactions/deposit', transactionRoutes.createDeposit);
     fastify.post('/transactions/withdrawal', transactionRoutes.createWithdrawal);
     fastify.post('/transactions/transfer', transactionRoutes.createTransfer);
+    fastify.post('/transfers', transactionRoutes.createTransfer);
     fastify.get('/transactions/statistics', transactionRoutes.getTransactionStatistics);
+    fastify.patch('/transactions/:transactionId/category', transactionRoutes.updateTransactionCategory);
+
+    // Beneficiary routes
+    fastify.get('/beneficiaries', beneficiaryRoutes.getBeneficiaries);
+    fastify.post('/beneficiaries', beneficiaryRoutes.createBeneficiary);
+    fastify.delete('/beneficiaries/:id', beneficiaryRoutes.deleteBeneficiary);
+
+    // Statement routes
+    fastify.register(statementRoutes, { prefix: '/statements' });
+
+    // Card routes
+    fastify.get('/cards', cardRoutes.getCards);
+    fastify.post('/cards', cardRoutes.issueCard);
+    fastify.post('/cards/:cardId/freeze', cardRoutes.freezeCard);
+    fastify.post('/cards/:cardId/unfreeze', cardRoutes.unfreezeCard);
+    fastify.put('/cards/:cardId/limits', cardRoutes.updateCardLimits);
+
+    // Bill routes
+    fastify.get('/bills/payees', billRoutes.getPayees);
+    fastify.post('/bills/payees', billRoutes.addPayee);
+    fastify.post('/bills/pay', billRoutes.payBill);
 
     // KYC routes
     fastify.get('/kyc/documents', kycRoutes.getKYCDocuments);

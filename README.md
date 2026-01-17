@@ -1,313 +1,296 @@
-# Aurum Vault - Luxury Enterprise Banking Platform
+# AURUM VAULT - Luxury Banking Platform
 
-> **Transforming NovaBank into a world-class luxury banking experience**
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+[![Node Version](https://img.shields.io/badge/node-18.19.0-brightgreen.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.x-black)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.x-blue)](https://reactjs.org/)
-[![Fastify](https://img.shields.io/badge/Fastify-4.x-green)](https://www.fastify.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15.x-blue)](https://postgresql.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://www.docker.com/)
-
-## 🎯 Project Overview
-
-Aurum Vault represents the complete transformation of NovaBank into a luxury, enterprise-grade banking platform. Built with modern technologies and designed for scalability, security, and exceptional user experience.
-
-### ✨ Key Features
-
-- **🏛️ Luxury Banking Experience**: Premium design system with glassmorphism and neumorphism effects
-- **🚀 Enterprise Architecture**: Multi-service backend with Fastify API and Express.js admin interface
-- **🔒 Bank-Grade Security**: Multi-layer security with advanced authentication and fraud detection
-- **🌍 Global Banking**: International wire transfers with real-time FX rates
-- **🤖 AI Concierge**: Context-aware banking assistant with intent recognition
-- **📊 Wealth Management**: Portfolio tracking and performance analytics
-- **⚡ High Performance**: Optimized for speed with caching and code splitting
+A modern, secure, and feature-rich banking platform built with cutting-edge technologies. AURUM VAULT provides a complete banking solution with separate interfaces for corporate website, customer e-banking portal, and administrative management.
 
 ## 🏗️ Architecture
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                  Frontend Application                       │
-│  Next.js 15 + React 19 + Luxury Design System             │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Backend Services                          │
-│  Core API (Fastify) + Admin Interface (Express.js)        │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Data Layer                                │
-│  PostgreSQL 15 + Redis 7 + Prisma ORM                     │
-└─────────────────────────────────────────────────────────────┘
-```
+### Hybrid Deployment Strategy
+
+- **Corporate Website** → Deployed to Netlify (Public-facing)
+- **Backend API** → Docker + ngrok tunnel (Secure API layer)
+- **Admin Interface** → Docker + ngrok tunnel (Internal management)
+- **E-Banking Portal** → Docker + ngrok tunnel (Customer portal)
+
+### Technology Stack
+
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| **Corporate Website** | Next.js + React + Tailwind CSS | 14.2.35 |
+| **E-Banking Portal** | Next.js + React + Tailwind CSS | 15.1.6 |
+| **Backend API** | Fastify + TypeScript + Prisma | 4.24.3 |
+| **Admin Interface** | Fastify + EJS + TypeScript | 4.24.3 |
+| **Database** | PostgreSQL | 15 |
+| **Cache** | Redis | 7 |
+| **ORM** | Prisma | 5.7.1 |
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+
-- npm 9+
-- Docker & Docker Compose
-- PostgreSQL 15+ (optional, can use Docker)
-- Redis 7+ (optional, can use Docker)
+- Node.js 18.19.0 or higher
+- Docker Desktop
+- ngrok account (for tunneling)
+- Netlify account (for corporate website)
 
-### 1. Clone & Setup
+### Installation
 
 ```bash
-# Navigate to project directory
-cd /path/to/novabank
+# Clone the repository
+git clone https://github.com/Ajirohack/Aurum_Vault.git
+cd Aurum_Vault
 
-# Copy environment configuration
-cp .env.example .env.local
+# Copy environment template
+cp .env.example .env
 
-# Edit .env.local with your configuration
+# Generate secure secrets (run 4 times)
+openssl rand -base64 32
+
+# Edit .env and add your secrets
+# - DB_PASSWORD
+# - JWT_SECRET
+# - JWT_REFRESH_SECRET
+# - ADMIN_JWT_SECRET
+# - SESSION_SECRET
+
+# Configure ngrok
+# Get auth token from: https://dashboard.ngrok.com
+# Edit ngrok.yml and add your token
 ```
 
-### 2. Docker Deployment (Recommended)
+### Running Locally
 
 ```bash
-# Start all services with Docker
-cd backend
-npm run docker:up
+# Start all services (Docker + ngrok)
+./scripts/start-all.sh
 
-# View service logs
-docker-compose -f docker/docker-compose.yml logs -f
-
-# Access applications:
-# - Frontend: http://localhost:3000
-# - Core API: http://localhost:3001
-# - Admin Interface: http://localhost:3002
-# - Database Admin: http://localhost:5050
+# This will:
+# 1. Start PostgreSQL, Redis, Backend, Admin, Portal
+# 2. Start 3 ngrok tunnels
+# 3. Display all service URLs
 ```
 
-### 3. Manual Development Setup
+### Accessing Services
 
-```bash
-# Backend services
-cd backend
-npm install
-npm run db:migrate
-npm run db:seed
-npm run dev
+After startup, services will be available at:
 
-# Frontend application (in new terminal)
-cd frontend
-npm install
-npm run dev
+```
+Local URLs:
+- Backend API:      http://localhost:3001
+- Admin Interface:  http://localhost:3003
+- E-Banking Portal: http://localhost:4000
+
+Public URLs (ngrok):
+- Backend API:      https://[random].ngrok.io
+- Admin Interface:  https://[random].ngrok.io
+- E-Banking Portal: https://[random].ngrok.io
 ```
 
 ## 📁 Project Structure
 
-```text
-novabank/
-├── frontend/                    # Next.js 15 Customer Portal
-│   ├── app/                    # App Router pages
-│   ├── components/             # React components
-│   ├── lib/                    # Utilities & API clients
-│   └── styles/                 # Tailwind CSS & themes
-├── backend/                    # Multi-Service Backend
-│   ├── core-api/              # Fastify Banking API
-│   ├── admin-interface/       # Express.js Admin Panel
-│   ├── database/              # Database schemas & migrations
-│   ├── shared/                # Shared utilities & types
-│   └── docker/                # Deployment configurations
-└── docs/                      # Comprehensive documentation
+```
+AURUMVAULT/
+├── backend/
+│   ├── core-api/          # Main API service (Fastify + Prisma)
+│   ├── shared/            # Shared utilities and types
+│   └── database/          # Database scripts and seeds
+├── admin-interface/       # Admin management UI (Fastify + EJS)
+├── e-banking-portal/      # Customer portal (Next.js 15)
+├── corporate-website/     # Public website (Next.js 14)
+├── docs/
+│   ├── deployment/        # Deployment documentation
+│   ├── integration/       # Integration guides
+│   └── testing/           # Testing documentation
+├── scripts/               # Automation scripts
+│   ├── start-all.sh       # Start all services
+│   ├── stop-all.sh        # Stop all services
+│   ├── start-ngrok.sh     # Start ngrok tunnels
+│   └── get-ngrok-urls.sh  # Display tunnel URLs
+├── docker-compose.yml     # Docker configuration
+├── ngrok.yml              # ngrok configuration
+└── .env.example           # Environment template
 ```
 
-## 🌐 Service Endpoints
+## 🔐 Security Features
 
-| Service | Port | Description | URL |
-|---------|------|-------------|-----|
-| **Frontend** | 3000 | Customer banking portal | <http://localhost:3000> |
-| **Core API** | 3001 | Banking REST API | <http://localhost:3001> |
-| **Admin Interface** | 3002 | Admin control center | <http://localhost:3002> |
-| **Database Admin** | 5050 | pgAdmin interface | <http://localhost:5050> |
+- ✅ JWT-based authentication
+- ✅ Password hashing (bcrypt/argon2)
+- ✅ Rate limiting
+- ✅ CORS protection
+- ✅ Security headers (Helmet)
+- ✅ Audit logging
+- ✅ Session management
+- ✅ Input validation (Zod)
 
-## 🔧 Development Commands
+## 🌐 Deployment
 
-### Backend Services
+### Corporate Website (Netlify)
 
 ```bash
-cd backend
-
-# Development
-npm run dev              # Start all services
-npm run dev:api          # Start Core API only
-npm run dev:admin        # Start Admin Interface only
-
-# Database
-npm run db:migrate       # Run migrations
-npm run db:seed          # Seed database
-npm run db:studio        # Open Prisma Studio
-
-# Testing & Quality
-npm run test             # Run all tests
-npm run lint             # Lint all services
-npm run build            # Build all services
-
-# Docker
-npm run docker:up        # Start with Docker
-npm run docker:down      # Stop Docker services
+cd corporate-website
+npm install
+npm run build
+netlify deploy --prod
 ```
 
-### Frontend Application
+### Backend Services (Docker)
 
 ```bash
-cd frontend
+# Start all Docker services
+docker-compose up -d
 
-npm run dev              # Development server
-npm run build            # Production build
-npm run start            # Production server
-npm run lint             # ESLint
-npm run type-check       # TypeScript check
+# View logs
+docker-compose logs -f backend
+
+# Stop services
+docker-compose down
 ```
 
-## 🔒 Security Features
+### ngrok Tunnels
 
-- **🔐 Authentication**: Clerk-based authentication with JWT tokens
-- **🛡️ Authorization**: Role-based access control (RBAC)
-- **🔒 Data Encryption**: AES-256-GCM for sensitive data
-- **🚨 Fraud Detection**: Real-time monitoring and ML-based detection
-- **📝 Audit Logging**: Comprehensive audit trail
-- **🔍 Compliance**: KYC/AML workflows and regulatory reporting
+```bash
+# Start tunnels
+./scripts/start-ngrok.sh
+
+# Get current URLs
+./scripts/get-ngrok-urls.sh
+
+# Stop tunnels
+./scripts/stop-ngrok.sh
+```
+
+## 📊 Database Schema
+
+The platform uses PostgreSQL with Prisma ORM. Key models include:
+
+- **Users** - Customer accounts
+- **Accounts** - Bank accounts
+- **Transactions** - All transactions
+- **Cards** - Debit/credit cards
+- **WireTransfers** - International transfers
+- **KycDocuments** - Identity verification
+- **AdminUsers** - Admin authentication
+- **AuditLogs** - Audit trail
 
 ## 🧪 Testing
 
 ```bash
-# Unit tests
-npm run test
+# Run tests for all services
+npm test
 
-# Integration tests
-npm run test:integration
-
-# End-to-end tests
-npm run test:e2e
-
-# Load testing
-npm run test:load
-```
-
-## 📊 Monitoring
-
-### Health Checks
-
-- Core API: `GET http://localhost:3001/health`
-- Admin Interface: `GET http://localhost:3002/admin/health`
-- Database: `GET http://localhost:3001/health/db`
-- Redis: `GET http://localhost:3001/health/redis`
-
-### Documentation
-
-- API Documentation: `http://localhost:3001/docs`
-- Admin Dashboard: `http://localhost:3002/admin/dashboard`
-
-## 🚀 Deployment
-
-### Production Deployment
-
-```bash
-# Build all services
-npm run build
-
-# Deploy with Docker
-docker-compose -f docker/docker-compose.prod.yml up -d
-```
-
-### Environment Configuration
-
-```bash
-# Development
-NODE_ENV=development
-
-# Staging  
-NODE_ENV=staging
-
-# Production
-NODE_ENV=production
+# Run tests for specific service
+cd backend/core-api && npm test
+cd admin-interface && npm test
 ```
 
 ## 📚 Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Development & Build Guide](./docs/DEVELOPMENT_BUILD_GUIDE.md) | Comprehensive setup and development guide |
-| [Master Implementation Guide](./docs/MASTER_IMPLEMENTATION_GUIDE.md) | Complete transformation overview |
-| [Aurum Design System](./docs/AURUM_DESIGN_SYSTEM.md) | Luxury design system implementation |
-| [Backend API Implementation](./docs/BACKEND_API_IMPLEMENTATION.md) | REST API development guide |
-| [Security & Compliance](./docs/SECURITY_COMPLIANCE_IMPLEMENTATION.md) | Security framework documentation |
-| [Admin Control Center](./docs/ADMIN_CONTROL_CENTER.md) | Admin interface implementation |
+Comprehensive documentation is available in the `/docs` directory:
 
-## 🛠️ Technology Stack
+- **[Quick Start Guide](./DEPLOYMENT_READY.md)** - Get started in 15 minutes
+- **[Architecture Analysis](./docs/deployment/PHASE_1_ARCHITECTURE_ANALYSIS.md)** - Technical deep dive
+- **[Service Dependencies](./docs/deployment/SERVICE_DEPENDENCY_MAP.md)** - Visual diagrams
+- **[Quick Reference](./docs/deployment/QUICK_REFERENCE.md)** - Daily operations
+- **[Deployment Guide](./docs/deployment/PHASE_2_SUMMARY.md)** - Docker & ngrok setup
 
-### Frontend
+## 🛠️ Development
 
-- **Next.js 15**: React framework with App Router
-- **React 19**: UI library with latest features
-- **Tailwind CSS**: Utility-first CSS framework
-- **Radix UI**: Accessible component primitives
-- **Lucide React**: Beautiful icon library
-
-### Backend
-
-- **Fastify**: High-performance web framework
-- **Express.js**: Admin interface framework
-- **Prisma**: Next-generation ORM
-- **PostgreSQL**: Robust relational database
-- **Redis**: In-memory data structure store
-- **Zod**: TypeScript-first schema validation
-
-### DevOps & Tools
-
-- **Docker**: Containerization platform
-- **TypeScript**: Type-safe JavaScript
-- **ESLint**: Code linting
-- **Jest**: Testing framework
-- **Winston**: Logging library
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-1. **Port Conflicts**: Check if ports 3000, 3001, 3002 are available
-2. **Database Connection**: Ensure PostgreSQL is running and accessible
-3. **Redis Connection**: Verify Redis service is running
-4. **Environment Variables**: Check `.env.local` configuration
-
-### Debug Mode
+### Backend API
 
 ```bash
-# Enable debug logging
-DEBUG=aurum:* npm run dev
-
-# Verbose logging
-LOG_LEVEL=debug npm run dev
+cd backend/core-api
+npm install
+npx prisma generate
+npx prisma migrate dev
+npm run dev
 ```
+
+### Admin Interface
+
+```bash
+cd admin-interface
+npm install
+npx prisma generate
+npm run dev
+```
+
+### E-Banking Portal
+
+```bash
+cd e-banking-portal
+npm install
+npm run dev
+```
+
+### Corporate Website
+
+```bash
+cd corporate-website
+npm install
+npm run dev
+```
+
+## 🔧 Environment Variables
+
+Key environment variables (see `.env.example` for complete list):
+
+```bash
+# Database
+DATABASE_URL=postgresql://postgres:password@postgres:5432/aurumvault
+
+# JWT Secrets
+JWT_SECRET=your-secret-here
+JWT_REFRESH_SECRET=your-refresh-secret-here
+ADMIN_JWT_SECRET=your-admin-secret-here
+
+# ngrok URLs (updated after starting ngrok)
+NGROK_BACKEND_URL=https://your-backend.ngrok.io
+NGROK_ADMIN_URL=https://your-admin.ngrok.io
+NGROK_PORTAL_URL=https://your-portal.ngrok.io
+
+# Netlify
+CORPORATE_URL=https://aurumvault.netlify.app
+```
+
+## 💰 Cost
+
+- **ngrok**: $8/month (paid plan for 3 tunnels)
+- **Netlify**: Free tier (100GB bandwidth, 300 build minutes)
+- **Docker**: Free (local deployment)
+
+**Total**: $8/month
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Contributions are welcome! Please read our contributing guidelines before submitting PRs.
 
-## 📄 License
+## 📝 License
 
-This project is proprietary software. All rights reserved.
+This project is licensed under the GPL-2.0 License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Authors
+
+- **Ajirohack** - *Initial work* - [GitHub](https://github.com/Ajirohack)
+
+## 🙏 Acknowledgments
+
+- Built with modern web technologies
+- Inspired by luxury banking experiences
+- Designed for security and scalability
 
 ## 📞 Support
 
-For questions, issues, or support:
+For support, please:
 
-- 📧 Email: <support@aurumvault.com>
-- 📖 Documentation: [Development Guide](./docs/DEVELOPMENT_BUILD_GUIDE.md)
-- 🐛 Issues: Create an issue in the repository
+1. Check the [documentation](./docs/deployment/README.md)
+2. Review [troubleshooting guide](./DEPLOYMENT_READY.md#-quick-troubleshooting)
+3. Open an issue on GitHub
 
 ---
 
-**Aurum Vault** - Where luxury meets technology in banking.
-
-*Last Updated: December 2024*
+**Status**: ✅ Production Ready  
+**Version**: 1.0.0  
+**Last Updated**: January 2026

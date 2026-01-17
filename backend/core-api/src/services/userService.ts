@@ -41,25 +41,23 @@ export class UserService {
     // Hash password
     const hashedPassword = await bcrypt.hash(userData.password, AUTH_CONFIG.BCRYPT_ROUNDS);
 
-    // Create user
+    // Create user with properly structured address data
+    const { address, ...userDataWithoutAddress } = userData;
+    
     const user = await prisma.user.create({
       data: {
-        email: userData.email,
+        ...userDataWithoutAddress,
         password: hashedPassword,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        phone: userData.phone,
-        dateOfBirth: userData.dateOfBirth,
         status: 'ACTIVE',
         kycStatus: 'PENDING',
         tier: 'BASIC',
         riskLevel: 'LOW',
-        // Create address if provided
-        ...(userData.address && {
+        // Create address if provided with proper Prisma nested input
+        ...(address ? {
           address: {
-            create: userData.address
+            create: address
           }
-        })
+        } : {})
       },
       select: {
         id: true,
@@ -174,18 +172,22 @@ export class UserService {
       country: string;
     };
   }) {
+    // Extract address from update data to handle separately
+    const { address, ...userDataWithoutAddress } = updateData;
+    
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
-        ...updateData,
-        ...(updateData.address && {
+        ...userDataWithoutAddress,
+        // Handle address with proper Prisma nested input
+        ...(address ? {
           address: {
             upsert: {
-              create: updateData.address,
-              update: updateData.address
+              create: address,
+              update: address
             }
           }
-        })
+        } : {})
       },
       select: {
         id: true,

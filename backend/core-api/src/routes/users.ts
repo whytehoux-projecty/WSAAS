@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
 import { validationSchemas, HTTP_STATUS, ERROR_CODES } from '@shared/index';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -11,17 +12,17 @@ const prisma = new PrismaClient();
 export const getUsers = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const query = validationSchemas.userQuery.parse(request.query);
-    
+
     const where: any = {};
-    
+
     if (query.status) {
       where.status = query.status;
     }
-    
+
     if (query.kycStatus) {
       where.kycStatus = query.kycStatus;
     }
-    
+
     if (query.search) {
       where.OR = [
         { firstName: { contains: query.search, mode: 'insensitive' } },
@@ -29,7 +30,7 @@ export const getUsers = async (request: FastifyRequest, reply: FastifyReply) => 
         { email: { contains: query.search, mode: 'insensitive' } },
       ];
     }
-    
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -51,14 +52,14 @@ export const getUsers = async (request: FastifyRequest, reply: FastifyReply) => 
           _count: {
             select: {
               accounts: true,
-              transactions: true,
+              kycDocuments: true,
             },
           },
         },
       }),
       prisma.user.count({ where }),
     ]);
-    
+
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
       data: users,
@@ -78,7 +79,7 @@ export const getUsers = async (request: FastifyRequest, reply: FastifyReply) => 
         details: error.errors,
       });
     }
-    
+
     request.log.error(error);
     return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
       success: false,
@@ -94,7 +95,7 @@ export const getUsers = async (request: FastifyRequest, reply: FastifyReply) => 
 export const getUserById = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { id } = request.params as { id: string };
-    
+
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
@@ -102,8 +103,7 @@ export const getUserById = async (request: FastifyRequest, reply: FastifyReply) 
           select: {
             id: true,
             accountNumber: true,
-            type: true,
-            name: true,
+            accountType: true,
             balance: true,
             status: true,
             createdAt: true,
@@ -112,21 +112,21 @@ export const getUserById = async (request: FastifyRequest, reply: FastifyReply) 
         kycDocuments: {
           select: {
             id: true,
-            type: true,
-            status: true,
-            uploadedAt: true,
-            reviewedAt: true,
+            documentType: true,
+            verificationStatus: true,
+            createdAt: true,
+            verifiedAt: true,
           },
         },
         _count: {
           select: {
-            transactions: true,
-            wireTransfers: true,
+            accounts: true,
+            kycDocuments: true,
           },
         },
       },
     });
-    
+
     if (!user) {
       return reply.status(HTTP_STATUS.NOT_FOUND).send({
         success: false,
@@ -134,7 +134,7 @@ export const getUserById = async (request: FastifyRequest, reply: FastifyReply) 
         message: 'User not found',
       });
     }
-    
+
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
       data: user,
@@ -158,12 +158,12 @@ export const getUser = getUserById;
 export const createUser = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const userData = validationSchemas.adminCreateUser.parse(request.body);
-    
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: userData.email },
     });
-    
+
     if (existingUser) {
       return reply.status(HTTP_STATUS.CONFLICT).send({
         success: false,
@@ -171,11 +171,15 @@ export const createUser = async (request: FastifyRequest, reply: FastifyReply) =
         message: 'User with this email already exists',
       });
     }
-    
+
+    const { address, ...rest } = userData as any;
+    const hashedPassword = await bcrypt.hash(rest.password, 12);
+
     const user = await prisma.user.create({
       data: {
-        ...userData,
-        passwordHash: 'temp_password_hash', // This should be properly hashed
+        ...rest,
+        password: hashedPassword,
+        ...(address ? { address: { create: address } } : {}),
       },
       select: {
         id: true,
@@ -188,7 +192,7 @@ export const createUser = async (request: FastifyRequest, reply: FastifyReply) =
         createdAt: true,
       },
     });
-    
+
     return reply.status(HTTP_STATUS.CREATED).send({
       success: true,
       data: user,
@@ -202,7 +206,7 @@ export const createUser = async (request: FastifyRequest, reply: FastifyReply) =
         details: error.errors,
       });
     }
-    
+
     request.log.error(error);
     return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
       success: false,
@@ -218,11 +222,16 @@ export const createUser = async (request: FastifyRequest, reply: FastifyReply) =
 export const updateUser = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { id } = request.params as { id: string };
-    const updateData = validationSchemas.updateUser.parse(request.body);
-    
+    const updateData = validationSchemas.updateUser.parse(request.body) as any;
+
+    const { address, ...rest } = updateData;
+
     const user = await prisma.user.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...rest,
+        ...(address ? { address: { upsert: { create: address, update: address } } } : {}),
+      },
       select: {
         id: true,
         email: true,
@@ -234,7 +243,7 @@ export const updateUser = async (request: FastifyRequest, reply: FastifyReply) =
         updatedAt: true,
       },
     });
-    
+
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
       data: user,
@@ -248,7 +257,7 @@ export const updateUser = async (request: FastifyRequest, reply: FastifyReply) =
         details: error.errors,
       });
     }
-    
+
     request.log.error(error);
     return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
       success: false,
@@ -264,7 +273,7 @@ export const updateUser = async (request: FastifyRequest, reply: FastifyReply) =
 export const suspendUser = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { id } = request.params as { id: string };
-    
+
     const user = await prisma.user.update({
       where: { id },
       data: { status: 'SUSPENDED' },
@@ -276,18 +285,20 @@ export const suspendUser = async (request: FastifyRequest, reply: FastifyReply) 
         status: true,
       },
     });
-    
+
     // Log audit event
     await prisma.auditLog.create({
       data: {
         userId: id,
         action: 'USER_SUSPENDED',
-        details: { suspendedBy: 'admin' }, // Should include actual admin ID
+        entityType: 'USER',
+        entityId: id,
+        details: JSON.stringify({ suspendedBy: 'admin' }), // Should include actual admin ID
         ipAddress: request.ip,
         userAgent: request.headers['user-agent'] || '',
       },
     });
-    
+
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
       data: user,
@@ -309,7 +320,7 @@ export const suspendUser = async (request: FastifyRequest, reply: FastifyReply) 
 export const activateUser = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { id } = request.params as { id: string };
-    
+
     const user = await prisma.user.update({
       where: { id },
       data: { status: 'ACTIVE' },
@@ -321,18 +332,20 @@ export const activateUser = async (request: FastifyRequest, reply: FastifyReply)
         status: true,
       },
     });
-    
+
     // Log audit event
     await prisma.auditLog.create({
       data: {
         userId: id,
         action: 'USER_ACTIVATED',
-        details: { activatedBy: 'admin' }, // Should include actual admin ID
+        entityType: 'USER',
+        entityId: id,
+        details: JSON.stringify({ activatedBy: 'admin' }), // Should include actual admin ID
         ipAddress: request.ip,
         userAgent: request.headers['user-agent'] || '',
       },
     });
-    
+
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
       data: user,
@@ -354,7 +367,7 @@ export const activateUser = async (request: FastifyRequest, reply: FastifyReply)
 export const getUserStatistics = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const query = validationSchemas.statisticsQuery.parse(request.query);
-    
+
     const dateFilter: any = {};
     if (query.startDate) {
       dateFilter.gte = new Date(query.startDate);
@@ -362,25 +375,20 @@ export const getUserStatistics = async (request: FastifyRequest, reply: FastifyR
     if (query.endDate) {
       dateFilter.lte = new Date(query.endDate);
     }
-    
-    const [
-      totalUsers,
-      activeUsers,
-      suspendedUsers,
-      pendingVerification,
-      newUsersCount,
-    ] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { status: 'ACTIVE' } }),
-      prisma.user.count({ where: { status: 'SUSPENDED' } }),
-      prisma.user.count({ where: { status: 'PENDING_VERIFICATION' } }),
-      prisma.user.count({
-        where: {
-          createdAt: dateFilter,
-        },
-      }),
-    ]);
-    
+
+    const [totalUsers, activeUsers, suspendedUsers, pendingVerification, newUsersCount] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { status: 'ACTIVE' } }),
+        prisma.user.count({ where: { status: 'SUSPENDED' } }),
+        prisma.user.count({ where: { status: 'PENDING_VERIFICATION' } }),
+        prisma.user.count({
+          where: {
+            createdAt: dateFilter,
+          },
+        }),
+      ]);
+
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
       data: {
@@ -400,7 +408,7 @@ export const getUserStatistics = async (request: FastifyRequest, reply: FastifyR
         details: error.errors,
       });
     }
-    
+
     request.log.error(error);
     return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
       success: false,
