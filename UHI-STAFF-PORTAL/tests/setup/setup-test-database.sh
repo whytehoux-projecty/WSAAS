@@ -172,64 +172,84 @@ create_test_users() {
     
     # Run test user creation script
     node -e "
-    const { PrismaClient } = require('@prisma/client');
+    const { PrismaClient, UserStatus } = require('@prisma/client');
     const bcrypt = require('bcryptjs');
     
     const prisma = new PrismaClient();
     
     async function createTestUsers() {
         console.log('Creating test users...');
+        const adminRole = await prisma.role.upsert({
+             where: { name: 'ADMIN' },
+             update: {},
+             create: { name: 'ADMIN', permissions: {} }
+        });
+
+        const staffRole = await prisma.role.upsert({
+             where: { name: 'STAFF' },
+             update: {},
+             create: { name: 'STAFF', permissions: {} }
+        });
+
+        const managerRole = await prisma.role.upsert({
+             where: { name: 'MANAGER' },
+             update: {},
+             create: { name: 'MANAGER', permissions: {} }
+        });
         
         // Admin user
-        await prisma.user.upsert({
+        const admin = await prisma.user.upsert({
             where: { email: 'admin.test@uhi.org' },
             update: {},
             create: {
+                staff_id: 'ADM001',
                 email: 'admin.test@uhi.org',
-                password: await bcrypt.hash('TestAdmin123!', 10),
-                firstName: 'Admin',
-                lastName: 'Test',
-                role: 'ADMIN',
-                isActive: true,
-                emailVerified: true,
+                password_hash: await bcrypt.hash('TestAdmin123!', 10),
+                first_name: 'Admin',
+                last_name: 'Test',
+                status: 'active',
             },
         });
+        await prisma.userRole.create({ data: { user_id: admin.id, role_id: adminRole.id } }).catch(() => {});
         
         // Staff user
-        await prisma.user.upsert({
+        const staff = await prisma.user.upsert({
             where: { email: 'staff.test@uhi.org' },
             update: {},
             create: {
+                staff_id: 'STF001',
                 email: 'staff.test@uhi.org',
-                password: await bcrypt.hash('TestStaff123!', 10),
-                firstName: 'Staff',
-                lastName: 'Test',
-                role: 'STAFF',
-                isActive: true,
-                emailVerified: true,
+                password_hash: await bcrypt.hash('TestStaff123!', 10),
+                first_name: 'Staff',
+                last_name: 'Test',
+                status: 'active',
             },
         });
+        await prisma.userRole.create({ data: { user_id: staff.id, role_id: staffRole.id } }).catch(() => {});
         
         // Manager user
-        await prisma.user.upsert({
+        const manager = await prisma.user.upsert({
             where: { email: 'manager.test@uhi.org' },
             update: {},
             create: {
+                staff_id: 'MGR001',
                 email: 'manager.test@uhi.org',
-                password: await bcrypt.hash('TestManager123!', 10),
-                firstName: 'Manager',
-                lastName: 'Test',
-                role: 'MANAGER',
-                isActive: true,
-                emailVerified: true,
+                password_hash: await bcrypt.hash('TestManager123!', 10),
+                first_name: 'Manager',
+                last_name: 'Test',
+                status: 'active',
             },
         });
+        await prisma.userRole.create({ data: { user_id: manager.id, role_id: managerRole.id } }).catch(() => {});
         
         console.log('✅ Test users created');
         await prisma.\$disconnect();
     }
     
-    createTestUsers().catch(console.error);
+    createTestUsers().catch((e) => {
+        console.error(e);
+        process.exit(1);
+    });
     "
     
     log_info "Test users created successfully"

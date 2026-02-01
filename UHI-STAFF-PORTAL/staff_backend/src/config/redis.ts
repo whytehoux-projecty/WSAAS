@@ -10,8 +10,8 @@ export const redis = new Redis(redisUrl, {
         return delay;
     },
     // Don't crash the app if Redis is down, just log errors
-    enableOfflineQueue: false, // If true, commands will be queued when Redis is down. If false, they will fail immediately.
-    // We set it to false so we can fallback to DB if Redis is down, or implement logic to skip cache.
+    // We set it to true to buffer commands if Redis is temporarily down/connecting
+    enableOfflineQueue: true,
 });
 
 redis.on('connect', () => {
