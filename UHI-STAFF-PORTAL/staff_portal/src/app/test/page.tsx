@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+// Force dynamic rendering to avoid build-time errors
+export const dynamic = 'force-dynamic';
+
 export default function TestPage() {
     const [connectionStatus, setConnectionStatus] = useState('Testing connection...');
     const [users, setUsers] = useState<any[]>([]);
@@ -135,10 +138,10 @@ export default function TestPage() {
                                         </div>
                                         <span
                                             className={`px-3 py-1 rounded-full text-xs font-medium ${loan.status === 'active'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : loan.status === 'pending'
-                                                        ? 'bg-yellow-100 text-yellow-800'
-                                                        : 'bg-gray-100 text-gray-800'
+                                                ? 'bg-green-100 text-green-800'
+                                                : loan.status === 'pending'
+                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                    : 'bg-gray-100 text-gray-800'
                                                 }`}
                                         >
                                             {loan.status}
@@ -181,12 +184,12 @@ export default function TestPage() {
                                         </div>
                                         <span
                                             className={`px-3 py-1 rounded-full text-xs font-medium ${app.status === 'approved'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : app.status === 'pending'
-                                                        ? 'bg-yellow-100 text-yellow-800'
-                                                        : app.status === 'rejected'
-                                                            ? 'bg-red-100 text-red-800'
-                                                            : 'bg-gray-100 text-gray-800'
+                                                ? 'bg-green-100 text-green-800'
+                                                : app.status === 'pending'
+                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                    : app.status === 'rejected'
+                                                        ? 'bg-red-100 text-red-800'
+                                                        : 'bg-gray-100 text-gray-800'
                                                 }`}
                                         >
                                             {app.status}
