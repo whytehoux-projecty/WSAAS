@@ -74,8 +74,8 @@ function StaffManagementContent() {
                 lastName: user.last_name || '',
                 email: user.email,
                 role: user.roles?.[0]?.role?.name || 'staff',
-                department: user.staff_profile?.department || 'Unassigned',
-                position: user.staff_profile?.position || 'Unassigned',
+                department: user.employment_history?.[0]?.department?.name || 'Unassigned',
+                position: user.employment_history?.[0]?.position_title || 'Unassigned',
                 status: user.status || 'inactive'
             }));
 
@@ -253,6 +253,8 @@ function StaffManagementContent() {
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value)}
                                     className="input"
+                                    title="Filter by status"
+                                    aria-label="Filter by status"
                                 >
                                     <option value="">All Status</option>
                                     <option value="active">Active</option>
@@ -265,6 +267,8 @@ function StaffManagementContent() {
                                     value={roleFilter}
                                     onChange={(e) => setRoleFilter(e.target.value)}
                                     className="input"
+                                    title="Filter by role"
+                                    aria-label="Filter by role"
                                 >
                                     <option value="">All Roles</option>
                                     <option value="admin">Admin</option>
@@ -389,6 +393,8 @@ function StaffManagementContent() {
                             <button
                                 onClick={() => setShowModal(false)}
                                 className="text-gray-400 hover:text-gray-600 transition-colors"
+                                title="Close"
+                                aria-label="Close modal"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

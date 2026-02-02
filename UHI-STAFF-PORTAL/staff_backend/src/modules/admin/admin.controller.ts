@@ -21,6 +21,16 @@ export class AdminController {
     }
   }
 
+  async updateUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const updatedUser = await adminService.updateUser(id, req.body);
+      res.json({ success: true, data: updatedUser, message: 'User updated successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getStats(req: Request, res: Response, next: NextFunction) {
     try {
       const stats = await adminService.getSystemStats();

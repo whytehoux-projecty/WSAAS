@@ -125,6 +125,11 @@ export class AdminService {
         roles: {
           include: { role: true },
         },
+        employment_history: {
+          orderBy: { start_date: 'desc' },
+          take: 1,
+          include: { department: true }
+        }
       },
       orderBy: { created_at: "desc" },
     });
@@ -250,6 +255,85 @@ export class AdminService {
         created_by: '00000000-0000-0000-0000-000000000000' // Placeholder for now, or pass admin ID
       }
     });
+  }
+
+  async updateUser(userId: string, data: Partial<RegisterDTO> & { role?: string; status?: string; department?: string; position?: string }) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError('User not found', 404);
+
+    const updatedUser = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // 1. Update Basic Info
+      const userUpdateData: any = {};
+      if (data.firstName) userUpdateData.first_name = data.firstName;
+      if (data.lastName) userUpdateData.last_name = data.lastName;
+      if (data.email) userUpdateData.email = data.email;
+      if (data.staffId) userUpdateData.staff_id = data.staffId;
+      if (data.status) userUpdateData.status = data.status;
+
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: userUpdateData
+      });
+
+      // 2. Update Role if provided
+      if (data.role) {
+        const role = await tx.role.findUnique({ where: { name: data.role } });
+        if (role) {
+          // Remove existing roles
+          await tx.userRole.deleteMany({ where: { user_id: userId } });
+          // Add new role
+          await tx.userRole.create({
+            data: { user_id: userId, role_id: role.id }
+          });
+        }
+      }
+
+      // 3. Update Employment History (Department/Position) if provided
+      if (data.department || data.position) {
+        // Find valid department
+        let departmentId = undefined;
+        if (data.department) {
+          const dept = await tx.department.findUnique({ where: { name: data.department } });
+          if (dept) {
+            departmentId = dept.id;
+          } else {
+            const newDept = await tx.department.create({ data: { name: data.department } });
+            departmentId = newDept.id;
+          }
+        }
+
+        // Check if there is a current employment history record
+        const currentHistory = await tx.employmentHistory.findFirst({
+          where: { user_id: userId, end_date: null },
+          orderBy: { start_date: 'desc' }
+        });
+
+        if (currentHistory) {
+          // Update existing record
+          await tx.employmentHistory.update({
+            where: { id: currentHistory.id },
+            data: {
+              position_title: data.position || currentHistory.position_title,
+              department_id: departmentId || currentHistory.department_id
+            }
+          });
+        } else if (departmentId && data.position) {
+          // Create new record only if we have both fields (or acceptable defaults)
+          await tx.employmentHistory.create({
+            data: {
+              user_id: userId,
+              position_title: data.position,
+              department_id: departmentId,
+              start_date: new Date()
+            }
+          });
+        }
+      }
+
+      return updated;
+    });
+
+    return updatedUser;
   }
 }
 
