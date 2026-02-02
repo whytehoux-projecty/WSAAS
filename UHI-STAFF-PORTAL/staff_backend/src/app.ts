@@ -22,7 +22,7 @@ import cmsRoutes from './modules/cms/cms.routes';
 import webhookRoutes from './modules/webhook/webhook.routes';
 
 // Middleware
-import { errorHandler } from './shared/middleware/errorHandler.middleware';
+import { errorHandler, AppError } from './shared/middleware/errorHandler.middleware';
 import { generalLimiter, authLimiter } from './shared/middleware/rateLimit.middleware';
 import { loggingMiddleware, errorLoggingMiddleware } from './shared/middleware/logging.middleware';
 import { metricsMiddleware } from './shared/middleware/metrics.middleware';
@@ -38,14 +38,23 @@ const app: Application = express();
 app.use(helmet());
 app.use(cors({
     origin: (origin, callback) => {
-        const allowedOrigins = (process.env.CORS_ORIGIN || '*').split(',');
+        const envOrigins = (process.env.CORS_ORIGIN || '*').split(',').map(o => o.trim());
+        const allowedOrigins = [
+            ...envOrigins,
+            'https://wsaas-rho.vercel.app',
+            'https://uhistaffportal.vercel.app',
+            'http://localhost:3000',
+            'http://localhost:5000'
+        ];
+
         if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            console.error(`❌ Blocked CORS Origin: ${origin}`);
+            callback(new AppError('Not allowed by CORS', 403));
         }
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-XSRF-Token'],
     credentials: true // Allow cookies for CSRF tokens
 }));

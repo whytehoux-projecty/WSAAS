@@ -1,6 +1,7 @@
 import { AuthTokens } from '@/types';
 
-const DEFAULT_ORIGIN = process.env.NEXT_PUBLIC_API_URL || '';
+const envUrl = process.env.NEXT_PUBLIC_API_URL || '';
+const DEFAULT_ORIGIN = envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
 
 class APIClient {
     private origin: string;
