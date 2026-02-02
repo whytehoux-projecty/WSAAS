@@ -1,7 +1,15 @@
 import { AuthTokens } from '@/types';
 
 const envUrl = process.env.NEXT_PUBLIC_API_URL || '';
-const DEFAULT_ORIGIN = envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
+let origin = envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
+if (origin.endsWith('/api/v1')) {
+    origin = origin.substring(0, origin.length - 7);
+}
+// Double check for trailing slash after removal
+if (origin.endsWith('/')) {
+    origin = origin.slice(0, -1);
+}
+const DEFAULT_ORIGIN = origin;
 
 class APIClient {
     private origin: string;
@@ -81,6 +89,8 @@ class APIClient {
         } = options;
 
         const url = `${this.origin}/api/v1${path.startsWith('/') ? '' : '/'}${path}`;
+        console.log(`📡 API Request: ${method} ${url}`); // Debug Log
+
         const finalHeaders: Record<string, string> = { ...headers };
 
         if (body !== undefined && !(body instanceof FormData)) {
