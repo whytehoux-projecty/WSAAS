@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdminLoginPage() {
@@ -43,7 +42,7 @@ export default function AdminLoginPage() {
             {/* Left Side - Branding */}
             <div className="hidden lg:flex lg:w-1/2 bg-[var(--primary-color)] text-white p-12 flex-col justify-center items-center relative overflow-hidden">
                 <div className="relative z-10 text-center">
-                    <Image
+                    <img
                         src="/assets/logo.svg"
                         alt="UHI Logo"
                         width={120}

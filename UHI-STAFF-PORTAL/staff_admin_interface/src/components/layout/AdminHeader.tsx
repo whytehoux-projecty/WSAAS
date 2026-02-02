@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useRef } from 'react';
@@ -51,7 +50,7 @@ export default function AdminHeader() {
                             </button>
 
                             <Link href="/" className="flex items-center gap-3">
-                                <Image
+                                <img
                                     src="/assets/logo.svg"
                                     alt="OneHR"
                                     width={40}
