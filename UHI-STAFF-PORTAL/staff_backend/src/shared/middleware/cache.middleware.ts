@@ -15,6 +15,11 @@ const generateKey = (req: Request) => {
 
 export const cacheMiddleware = (duration: number = CACHE_TTL.SHORT) => {
     return async (req: Request, res: Response, next: NextFunction) => {
+        // Skip caching if Redis is not available
+        if (!redis) {
+            return next();
+        }
+
         // Skip caching for non-GET requests
         if (req.method !== 'GET') {
             return next();
@@ -41,7 +46,7 @@ export const cacheMiddleware = (duration: number = CACHE_TTL.SHORT) => {
 
                 // Cache the response asynchronously (don't block the response)
                 // We only cache successful responses
-                if (res.statusCode >= 200 && res.statusCode < 300) {
+                if (redis && res.statusCode >= 200 && res.statusCode < 300) {
                     redis.set(key, JSON.stringify(body), 'EX', duration)
                         .catch(err => logger.error('Redis cache set error', err));
                 }
@@ -59,6 +64,11 @@ export const cacheMiddleware = (duration: number = CACHE_TTL.SHORT) => {
 };
 
 export const clearCache = async (pattern: string) => {
+    if (!redis) {
+        logger.warn('Redis not available, cannot clear cache');
+        return;
+    }
+
     try {
         const keys = await redis.keys(pattern);
         if (keys.length > 0) {

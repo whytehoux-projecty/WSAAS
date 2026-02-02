@@ -7,8 +7,7 @@
             "es2020"
         ],
         "types": [
-            "node",
-            "jest"
+            "node"
         ],
         "baseUrl": "./src",
         "moduleResolution": "node",
@@ -26,6 +25,9 @@
     ],
     "exclude": [
         "node_modules",
-        "tests"
+        "tests",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "dist"
     ]
 }

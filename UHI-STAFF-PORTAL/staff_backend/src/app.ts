@@ -88,9 +88,14 @@ app.get('/health', async (req: Request, res: Response) => {
     };
 
     try {
-        await redis.ping();
-        health.redis = 'UP';
-        health.services.redis = 'UP';
+        if (redis) {
+            await redis.ping();
+            health.redis = 'UP';
+            health.services.redis = 'UP';
+        } else {
+            health.redis = 'NOT_CONFIGURED';
+            health.services.redis = 'NOT_CONFIGURED';
+        }
     } catch (e) {
         health.redis = 'DOWN';
     }

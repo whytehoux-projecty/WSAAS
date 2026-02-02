@@ -24,6 +24,11 @@ function generateCsrfToken(): string {
  */
 export const csrfTokenGenerator = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Skip CSRF if Redis is not available
+        if (!redis) {
+            return next();
+        }
+
         // Generate new token
         const token = generateCsrfToken();
 
@@ -56,6 +61,11 @@ export const csrfTokenGenerator = async (req: Request, res: Response, next: Next
  */
 export const csrfProtection = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Skip CSRF if Redis is not available
+        if (!redis) {
+            return next();
+        }
+
         // Skip CSRF check for safe methods
         if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
             return next();
@@ -96,6 +106,10 @@ export const csrfProtection = async (req: Request, res: Response, next: NextFunc
  * Run this periodically or on user logout
  */
 export const cleanupCsrfTokens = async (userId: string) => {
+    if (!redis) {
+        return;
+    }
+
     try {
         const pattern = `csrf:${userId}:*`;
         const keys = await redis.keys(pattern);
@@ -113,6 +127,13 @@ export const cleanupCsrfTokens = async (userId: string) => {
  * GET /api/v1/csrf-token
  */
 export const getCsrfToken = async (req: Request, res: Response) => {
+    if (!redis) {
+        return res.status(503).json({
+            success: false,
+            error: 'CSRF protection not available'
+        });
+    }
+
     const token = generateCsrfToken();
     const userId = (req as any).user?.id || req.ip;
     const redisKey = `csrf:${userId}:${token}`;
