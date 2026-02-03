@@ -13,7 +13,7 @@
     "dev:api": "cd core-api && npm run dev",
     "dev:admin": "cd admin-interface && npm run dev",
     "dev:shared": "cd shared && npm run dev",
-    "build": "npm install && npm run build:shared && npm run build:api && npm run build:admin",
+    "build": "npm install --include=dev && npm run build:shared && npm run build:api && npm run build:admin",
     "build:shared": "cd shared && npm run build",
     "build:api": "cd core-api && npm run build",
     "build:admin": "cd admin-interface && npm run build",
