@@ -92,11 +92,11 @@ export const metricsMiddleware = async (
     const start = Date.now();
 
     // Track request
-    reply.addHook('onResponse', async (req, res) => {
+    reply.raw.on('finish', () => {
         const duration = (Date.now() - start) / 1000;
-        const route = req.routerPath || req.url;
-        const method = req.method;
-        const status = res.statusCode.toString();
+        const route = request.routerPath || request.url;
+        const method = request.method;
+        const status = reply.statusCode.toString();
 
         // Record metrics
         httpRequestDuration.observe({ method, route, status }, duration);

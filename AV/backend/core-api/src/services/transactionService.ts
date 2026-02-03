@@ -675,7 +675,7 @@ export class TransactionService {
       include: { account: true },
     });
 
-    const results = [];
+    const results: any[] = [];
 
     for (const transaction of pendingTransactions) {
       try {
