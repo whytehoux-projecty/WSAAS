@@ -23,7 +23,7 @@ export default function ServiceUnavailablePage() {
 
             // If we can reach the portal, redirect to it
             window.location.href = portalUrl;
-        } catch (_) {
+        } catch {
         } finally {
             setIsChecking(false);
             setRetryCount(prev => prev + 1);
