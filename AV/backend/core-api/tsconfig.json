@@ -25,6 +25,7 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": true,
     "strictPropertyInitialization": false,
+    "strictNullChecks": false,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
