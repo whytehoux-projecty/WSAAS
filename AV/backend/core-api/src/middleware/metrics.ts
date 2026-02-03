@@ -4,6 +4,7 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+// @ts-ignore
 import client from 'prom-client';
 
 // Create a Registry
