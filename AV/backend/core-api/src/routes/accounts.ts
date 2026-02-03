@@ -1,7 +1,10 @@
+import { PrismaClient } from '@prisma/client';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { AccountService } from '../services/accountService';
 import { ERROR_CODES, HTTP_STATUS } from '../../shared/index';
+
+const prisma = new PrismaClient();
 
 // Validation schemas
 const createAccountSchema = z.object({
