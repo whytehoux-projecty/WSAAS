@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Wallet,
     PiggyBank,
@@ -27,80 +27,26 @@ import { VintageIcon } from '@/components/ui/vintage-icon';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Mock Data (In a real app, this comes from API)
-const accountsData: Account[] = [
-    {
-        id: 1,
-        name: 'Classic Checking',
-        accountNumber: '1234567890',
-        maskedNumber: '****5678',
-        balance: 5847.32,
-        availableBalance: 5847.32,
-        type: 'checking',
-        interestRate: '0.15%',
-        monthlyChange: +234.50,
-        openedDate: '2020-03-15',
-        status: 'active',
-        recentTransactions: [
-            { id: 1, description: 'Grocery Store', amount: -87.45, date: '2026-01-15', type: 'debit' },
-            { id: 2, description: 'Salary Deposit', amount: +3500.00, date: '2026-01-14', type: 'credit' },
-            { id: 3, description: 'Electric Bill', amount: -125.30, date: '2026-01-13', type: 'debit' },
-        ],
-    },
-    {
-        id: 2,
-        name: 'Growth Savings',
-        accountNumber: '9876543210',
-        maskedNumber: '****9012',
-        balance: 15420.00,
-        availableBalance: 15420.00,
-        type: 'savings',
-        interestRate: '4.20%',
-        monthlyChange: +89.12,
-        openedDate: '2019-06-20',
-        status: 'active',
-        recentTransactions: [
-            { id: 1, description: 'Interest Payment', amount: +12.45, date: '2026-01-10', type: 'credit' },
-            { id: 2, description: 'Transfer from Checking', amount: +500.00, date: '2026-01-12', type: 'credit' },
-        ],
-    },
-    {
-        id: 3,
-        name: 'Rewards Credit Card',
-        accountNumber: '5555666677',
-        maskedNumber: '****3456',
-        balance: -1420.00, // Negative balance for credit means owed
-        availableBalance: 8580.00,
-        creditLimit: 10000.00,
-        type: 'credit',
-        interestRate: '18.99%',
-        monthlyChange: -156.00,
-        openedDate: '2021-11-10',
-        status: 'active',
-        recentTransactions: [
-            { id: 1, description: 'Online Purchase', amount: -156.78, date: '2026-01-11', type: 'debit' },
-            { id: 2, description: 'Restaurant', amount: -45.20, date: '2026-01-12', type: 'debit' },
-        ],
-    },
-];
+import { api } from '@/lib/api-client';
 
 interface Account {
-    id: number;
+    id: string;
     name: string;
     accountNumber: string;
     maskedNumber: string;
     balance: number;
     availableBalance: number;
     creditLimit?: number;
-    type: 'checking' | 'savings' | 'credit';
+    type: 'checking' | 'savings' | 'credit' | 'investment';
     interestRate: string;
     monthlyChange: number;
     openedDate: string;
-    status: 'active' | 'inactive' | 'frozen';
-    recentTransactions: Transaction[];
+    status: 'active' | 'inactive' | 'closed' | 'suspended';
+    currency: string;
 }
 
 interface Transaction {
-    id: number;
+    id: string;
     description: string;
     amount: number;
     date: string;
@@ -108,10 +54,80 @@ interface Transaction {
 }
 
 export default function AccountsPage() {
-    const [selectedAccount, setSelectedAccount] = useState<Account>(accountsData[0]);
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
     const [showAccountNumber, setShowAccountNumber] = useState(false);
 
-    const totalBalance = accountsData.reduce((sum, acc) =>
+    // Fetch accounts on mount
+    useState(() => { // Using useEffect in actual implementation logic, strict mode might double call but ok
+    });
+    // Wait, replacing useState with useEffect logic
+
+    // Proper implementation
+    const loadAccounts = async () => {
+        try {
+            const data = await api.accounts.getAll();
+            const fetchedAccounts = (data.accounts || []).map((acc: any) => ({
+                id: acc.id,
+                name: `${acc.accountType.charAt(0) + acc.accountType.slice(1).toLowerCase()} Account`,
+                accountNumber: acc.accountNumber,
+                maskedNumber: `****${acc.accountNumber.slice(-4)}`,
+                balance: acc.balance,
+                availableBalance: acc.balance, // Backend should provide this preferably
+                type: acc.accountType.toLowerCase(),
+                interestRate: acc.accountType === 'SAVINGS' ? '4.20%' : '0.00%',
+                monthlyChange: 100, // Mock for now
+                openedDate: acc.createdAt,
+                status: acc.status.toLowerCase(),
+                currency: acc.currency
+            }));
+
+            setAccounts(fetchedAccounts);
+            if (fetchedAccounts.length > 0) {
+                setSelectedAccount(fetchedAccounts[0]);
+            }
+        } catch (error) {
+            console.error('Failed to load accounts', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Load accounts effect
+    useEffect(() => {
+        loadAccounts();
+    }, []);
+
+    // Effect to reload transactions when selected account changes
+    useEffect(() => {
+        if (selectedAccount) {
+            loadTransactions(selectedAccount.id);
+        }
+    }, [selectedAccount]);
+
+    const loadTransactions = async (accountId: string) => {
+        setIsLoadingTransactions(true);
+        try {
+            const data = await api.transactions.getAll({ accountId, limit: 10 });
+            const txs = (data.transactions || []).map((tx: any) => ({
+                id: tx.id,
+                description: tx.description,
+                amount: tx.amount, // Backend sends signed amount?
+                date: tx.createdAt,
+                type: tx.type === 'DEPOSIT' || tx.type === 'CREDIT' ? 'credit' : 'debit'
+            }));
+            setTransactions(txs);
+        } catch (error) {
+            console.error('Failed to load transactions', error);
+        } finally {
+            setIsLoadingTransactions(false);
+        }
+    };
+
+    const totalBalance = accounts.reduce((sum, acc) =>
         acc.type === 'credit' ? sum : sum + acc.balance
         , 0);
 
@@ -159,7 +175,7 @@ export default function AccountsPage() {
                             </h2>
                             <p className="text-warm-cream/80 mt-4 flex items-center gap-2">
                                 <Badge variant="outline" className="border-warm-cream/30 text-warm-cream">
-                                    {accountsData.length} Active Accounts
+                                    {accounts.length} Active Accounts
                                 </Badge>
                             </p>
                         </div>
@@ -169,10 +185,12 @@ export default function AccountsPage() {
 
             {/* Accounts Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {accountsData.map((account) => (
+                {isLoading ? (
+                    <div className="col-span-3 text-center py-10">Loading accounts...</div>
+                ) : accounts.map((account) => (
                     <Card
                         key={account.id}
-                        className={`cursor-pointer transition-all hover:shadow-vintage-lg hover:-translate-y-1 ${selectedAccount.id === account.id ? 'ring-2 ring-vintage-green border-vintage-green' : ''
+                        className={`cursor-pointer transition-all hover:shadow-vintage-lg hover:-translate-y-1 ${selectedAccount?.id === account.id ? 'ring-2 ring-vintage-green border-vintage-green' : ''
                             }`}
                         onClick={() => setSelectedAccount(account)}
                     >
@@ -221,124 +239,130 @@ export default function AccountsPage() {
             </div>
 
             {/* Detailed View Section */}
-            <div className="grid lg:grid-cols-3 gap-8 pt-4">
-                {/* Main Details */}
-                <div className="lg:col-span-2 space-y-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                            <div>
-                                <CardTitle className="text-xl font-playfair">{selectedAccount.name}</CardTitle>
-                                <CardDescription>Account Details & Analytics</CardDescription>
-                            </div>
-                            <Button variant="outline" size="small" icon={<Download className="w-4 h-4" />}>
-                                Statement
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="space-y-8">
-
-                            {/* Vital Stats */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="p-4 bg-muted/50 rounded-xl space-y-1">
-                                    <p className="text-sm text-muted-foreground">Account Number</p>
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-lg font-mono font-semibold tracking-wider">
-                                            {showAccountNumber ? selectedAccount.accountNumber : selectedAccount.maskedNumber}
-                                        </p>
-                                        <Button variant="ghost" size="small" className="h-6 w-6 p-0" onClick={() => setShowAccountNumber(!showAccountNumber)}>
-                                            {showAccountNumber ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                        </Button>
-                                    </div>
+            {selectedAccount && (
+                <div className="grid lg:grid-cols-3 gap-8 pt-4">
+                    {/* Main Details */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                                <div>
+                                    <CardTitle className="text-xl font-playfair">{selectedAccount.name}</CardTitle>
+                                    <CardDescription>Account Details & Analytics</CardDescription>
                                 </div>
-                                <div className="p-4 bg-muted/50 rounded-xl space-y-1">
-                                    <p className="text-sm text-muted-foreground">Status</p>
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant={selectedAccount.status === 'active' ? 'success' : 'warning'} className="capitalize">
-                                            {selectedAccount.status}
-                                        </Badge>
-                                        <span className="text-xs text-muted-foreground">
-                                            since {new Date(selectedAccount.openedDate).toLocaleDateString()}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                                <Button variant="outline" size="small" icon={<Download className="w-4 h-4" />}>
+                                    Statement
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="space-y-8">
 
-                            {/* Credit Card Utilization Bar if Credit */}
-                            {selectedAccount.type === 'credit' && selectedAccount.creditLimit && (
-                                <div className="space-y-4">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="font-medium text-charcoal">Credit Utilization</span>
-                                        <span className="font-mono">{((Math.abs(selectedAccount.balance) / selectedAccount.creditLimit) * 100).toFixed(1)}%</span>
+                                {/* Vital Stats */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="p-4 bg-muted/50 rounded-xl space-y-1">
+                                        <p className="text-sm text-muted-foreground">Account Number</p>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-lg font-mono font-semibold tracking-wider">
+                                                {showAccountNumber ? selectedAccount.accountNumber : selectedAccount.maskedNumber}
+                                            </p>
+                                            <Button variant="ghost" size="small" className="h-6 w-6 p-0" onClick={() => setShowAccountNumber(!showAccountNumber)}>
+                                                {showAccountNumber ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <Progress value={(Math.abs(selectedAccount.balance) / selectedAccount.creditLimit) * 100} className="h-3" />
-                                    <div className="flex justify-between text-xs text-muted-foreground">
-                                        <span>$0</span>
-                                        <span>Limit: {formatCurrency(selectedAccount.creditLimit)}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Recent Activity List */}
-                            <div>
-                                <h4 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
-                                    <HistoryIcon /> Recent Activity
-                                </h4>
-                                <div className="space-y-3">
-                                    {selectedAccount.recentTransactions.map((tx) => (
-                                        <div key={tx.id} className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-lg transition-colors border border-transparent hover:border-border">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${tx.amount > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                    {tx.amount > 0 ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-sm text-charcoal">{tx.description}</p>
-                                                    <p className="text-xs text-muted-foreground">{new Date(tx.date).toLocaleDateString()}</p>
-                                                </div>
-                                            </div>
-                                            <span className={`font-mono font-medium ${tx.amount > 0 ? 'text-green-600' : 'text-charcoal'}`}>
-                                                {tx.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(tx.amount))}
+                                    <div className="p-4 bg-muted/50 rounded-xl space-y-1">
+                                        <p className="text-sm text-muted-foreground">Status</p>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant={selectedAccount.status === 'active' ? 'success' : 'warning'} className="capitalize">
+                                                {selectedAccount.status}
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground">
+                                                since {new Date(selectedAccount.openedDate).toLocaleDateString()}
                                             </span>
                                         </div>
-                                    ))}
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
 
-                {/* Right Sidebar */}
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Quick Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <Button className="w-full justify-start" variant="outline" icon={<ArrowUpRight className="w-4 h-4 mr-2" />}>
-                                Transfer Funds
-                            </Button>
-                            <Button className="w-full justify-start" variant="outline" icon={<Download className="w-4 h-4 mr-2" />}>
-                                Download Statement
-                            </Button>
-                            <Button className="w-full justify-start hover:bg-red-50 hover:text-red-600 hover:border-red-200" variant="outline" icon={<Lock className="w-4 h-4 mr-2" />}>
-                                Freeze Account
-                            </Button>
-                        </CardContent>
-                    </Card>
+                                {/* Credit Card Utilization Bar if Credit */}
+                                {selectedAccount.type === 'credit' && selectedAccount.creditLimit && (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="font-medium text-charcoal">Credit Utilization</span>
+                                            <span className="font-mono">{((Math.abs(selectedAccount.balance) / selectedAccount.creditLimit) * 100).toFixed(1)}%</span>
+                                        </div>
+                                        <Progress value={(Math.abs(selectedAccount.balance) / selectedAccount.creditLimit) * 100} className="h-3" />
+                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                            <span>$0</span>
+                                            <span>Limit: {formatCurrency(selectedAccount.creditLimit)}</span>
+                                        </div>
+                                    </div>
+                                )}
 
-                    {/* Insights / Tips */}
-                    <Card className="bg-gradient-to-br from-soft-gold/10 to-transparent border-soft-gold/20">
-                        <CardHeader>
-                            <CardTitle className="text-lg">Insights</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                {selectedAccount.type === 'savings' && `You are earning ${selectedAccount.interestRate} APY. Adding $500/mo could grow your savings by 12% by year end.`}
-                                {selectedAccount.type === 'credit' && `Your utilization is healthy. Keep it under 30% to maintain your high credit score.`}
-                                {selectedAccount.type === 'checking' && `Spending is 5% lower than last month. Great job sticking to your budget!`}
-                            </p>
-                        </CardContent>
-                    </Card>
+                                {/* Recent Activity List */}
+                                <div>
+                                    <h4 className="font-semibold text-charcoal mb-4 flex items-center gap-2">
+                                        <HistoryIcon /> Recent Activity
+                                    </h4>
+                                    <div className="space-y-3">
+                                        {isLoadingTransactions ? (
+                                            <div className="p-4 text-center text-muted-foreground">Loading activity...</div>
+                                        ) : transactions.length > 0 ? transactions.map((tx) => (
+                                            <div key={tx.id} className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-lg transition-colors border border-transparent hover:border-border">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${['credit', 'deposit'].includes(tx.type) || tx.amount > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {['credit', 'deposit'].includes(tx.type) || tx.amount > 0 ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-sm text-charcoal">{tx.description}</p>
+                                                        <p className="text-xs text-muted-foreground">{new Date(tx.date).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                                <span className={`font-mono font-medium ${['credit', 'deposit'].includes(tx.type) || tx.amount > 0 ? 'text-green-600' : 'text-charcoal'}`}>
+                                                    {['credit', 'deposit'].includes(tx.type) || tx.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(tx.amount))}
+                                                </span>
+                                            </div>
+                                        )) : (
+                                            <div className="p-4 text-center text-muted-foreground">No recent traffic</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Right Sidebar */}
+                    <div className="space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg">Quick Actions</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <Button className="w-full justify-start" variant="outline" icon={<ArrowUpRight className="w-4 h-4 mr-2" />}>
+                                    Transfer Funds
+                                </Button>
+                                <Button className="w-full justify-start" variant="outline" icon={<Download className="w-4 h-4 mr-2" />}>
+                                    Download Statement
+                                </Button>
+                                <Button className="w-full justify-start hover:bg-red-50 hover:text-red-600 hover:border-red-200" variant="outline" icon={<Lock className="w-4 h-4 mr-2" />}>
+                                    Freeze Account
+                                </Button>
+                            </CardContent>
+                        </Card>
+
+                        {/* Insights / Tips */}
+                        <Card className="bg-gradient-to-br from-soft-gold/10 to-transparent border-soft-gold/20">
+                            <CardHeader>
+                                <CardTitle className="text-lg">Insights</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                    {selectedAccount.type === 'savings' && `You are earning ${selectedAccount.interestRate} APY. Adding $500/mo could grow your savings by 12% by year end.`}
+                                    {selectedAccount.type === 'credit' && `Your utilization is healthy. Keep it under 30% to maintain your high credit score.`}
+                                    {selectedAccount.type === 'checking' && `Spending is 5% lower than last month. Great job sticking to your budget!`}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

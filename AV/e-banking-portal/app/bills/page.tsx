@@ -140,12 +140,72 @@ export default function BillsPage() {
     const handleQuickPay = async () => {
         if (!amount || !selectedAccountId || !selectedProvider) return;
 
-        // Simulate API call
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            // 1. Resolve Payee (Find or Create)
+            const payeesRes = await api.bills.getPayees();
+            let payee = payeesRes.payees.find((p: any) => p.name === selectedProvider);
+
+            if (!payee) {
+                const newPayeeRes = await api.bills.addPayee({
+                    name: selectedProvider,
+                    accountNumber: customerId || 'UNKNOWN',
+                    category: selectedCategory || 'General'
+                });
+                payee = newPayeeRes.payee;
+            }
+
+            // 2. Process Payment
+            await api.bills.pay({
+                payeeId: payee.id,
+                amount: parseFloat(amount),
+                accountId: selectedAccountId,
+                paymentDate: new Date().toISOString()
+            });
+
             setStep(3); // Success Screen
-        }, 1500);
+        } catch (error) {
+            console.error('Payment failed', error);
+            // In a real app, show error toast
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleInvoicePay = async () => {
+        if (!amount || !selectedAccountId || !invoiceFile) return;
+
+        setLoading(true); // Using loading state for UI feedback
+        try {
+            // 1. Resolve Payee
+            const payeeName = invoiceData?.merchantName || 'Unknown Merchant';
+            const payeesRes = await api.bills.getPayees();
+            let payee = payeesRes.payees.find((p: any) => p.name === payeeName);
+
+            if (!payee) {
+                const newPayeeRes = await api.bills.addPayee({
+                    name: payeeName,
+                    accountNumber: invoiceData?.accountNumber || 'UNKNOWN',
+                    category: 'Bill'
+                });
+                payee = newPayeeRes.payee;
+            }
+
+            // 2. Prepare FormData for Verified Payment
+            const formData = new FormData();
+            formData.append('file', invoiceFile);
+            formData.append('payeeId', payee.id);
+            formData.append('accountId', selectedAccountId);
+            formData.append('amount', amount);
+
+            await api.bills.payVerified(formData);
+
+            setStep(3);
+        } catch (error) {
+            console.error('Invoice payment failed', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleInvoiceUpload = async (file: File) => {
@@ -399,8 +459,8 @@ export default function BillsPage() {
                                         <Button variant="outline" className="flex-1" onClick={() => { setInvoiceData(null); setInvoiceFile(null); }}>
                                             Cancel
                                         </Button>
-                                        <Button className="flex-1 bg-vintage-gold text-white hover:bg-vintage-gold-dark" onClick={() => setStep(3)}>
-                                            Pay Invoice Now
+                                        <Button className="flex-1 bg-vintage-gold text-white hover:bg-vintage-gold-dark" onClick={handleInvoicePay} disabled={loading}>
+                                            {loading ? 'Processing...' : 'Pay Invoice Now'}
                                         </Button>
                                     </div>
                                 </CardContent>

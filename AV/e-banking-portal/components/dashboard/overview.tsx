@@ -3,24 +3,24 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 
 interface OverviewProps {
-    income: number;
-    expense: number;
+    data?: any[];
+    income?: number; // Keep for backward compatibility if needed, or remove
+    expense?: number;
 }
 
-export function Overview({ income, expense }: OverviewProps) {
-    // For now, we project the current month's data as a single bar
-    // In a real scenario, we would fetch historical data
-    const data = [
+export function Overview({ data, income, expense }: OverviewProps) {
+    // Use provided data or fallback to single bar
+    const chartData = data || [
         {
             name: "Current Month",
-            income: income,
-            expense: expense,
+            income: income || 0,
+            expense: expense || 0,
         },
     ];
 
     return (
         <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={data}>
+            <BarChart data={chartData}>
                 <XAxis
                     dataKey="name"
                     stroke="#888888"

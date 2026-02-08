@@ -8,6 +8,7 @@ The secure customer banking portal for AURUM VAULT, allowing users to manage acc
 - **Styling**: Tailwind CSS
 - **State Management**: React Hooks
 - **Testing**: Playwright (E2E) & Jest (Unit)
+- **Status**: 🔄 **78% Complete** ([View Technical Review](./TECHNICAL_REVIEW_REPORT.md))
 
 ## 🚀 Getting Started
 

@@ -645,7 +645,7 @@ export class AccountService {
       },
     });
 
-    const results: any[] = [];
+    const results = [];
 
     for (const account of savingsAccounts) {
       // Calculate daily interest (annual rate / 365)

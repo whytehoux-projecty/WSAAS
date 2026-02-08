@@ -22,7 +22,35 @@ const payBillSchema = z.object({
   reference: z.string().optional(), // Invoice number or reference
 });
 
+import { getTransactions } from './transactions';
+
 export default async function billRoutes(fastify: FastifyInstance) {
+  // Get Bill Payments History
+  fastify.get(
+    '/',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Get bill payment history',
+        tags: ['Bills'],
+        querystring: {
+          type: 'object',
+          properties: {
+            page: { type: 'integer', minimum: 1, default: 1 },
+            limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+            startDate: { type: 'string', format: 'date' },
+            endDate: { type: 'string', format: 'date' },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      // Force type parameter to PAYMENT
+      (request.query as any).type = 'PAYMENT';
+      return getTransactions(request, reply);
+    }
+  );
+
   // Get Payees
   fastify.get(
     '/payees',

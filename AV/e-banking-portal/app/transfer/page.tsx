@@ -32,6 +32,7 @@ interface TransferFormData {
     routingNumber?: string;
     bankName?: string;
     swiftCode?: string;
+    recipientName?: string;
     transferType: 'INTERNAL' | 'WIRE';
 }
 
@@ -47,6 +48,7 @@ function TransferContent() {
         toAccountNumber: '',
         amount: '',
         description: '',
+        recipientName: '',
         transferType: 'INTERNAL'
     });
 
@@ -83,12 +85,13 @@ function TransferContent() {
             } else {
                 await api.transfers.createWire({
                     fromAccountId: formData.fromAccountId,
-                    toAccountNumber: formData.toAccountNumber,
+                    recipientAccount: formData.toAccountNumber,
                     amount: parseFloat(formData.amount),
-                    swiftCode: formData.swiftCode!,
-                    routingNumber: formData.routingNumber,
-                    bankName: formData.bankName!,
-                    description: formData.description
+                    currency: 'USD',
+                    swiftCode: formData.swiftCode,
+                    recipientBank: formData.bankName,
+                    recipientName: formData.recipientName,
+                    purpose: formData.description
                 });
             }
 
@@ -100,6 +103,7 @@ function TransferContent() {
                 toAccountNumber: '',
                 amount: '',
                 description: '',
+                recipientName: '',
                 swiftCode: '',
                 routingNumber: '',
                 bankName: ''
@@ -235,6 +239,16 @@ function TransferContent() {
 
                             {formData.transferType === 'WIRE' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-l-2 border-vintage-green/20 pl-4 animate-in fade-in slide-in-from-left-4">
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="recipientName">Recipient Name</Label>
+                                        <Input
+                                            id="recipientName"
+                                            placeholder="Enter recipient's full name"
+                                            value={formData.recipientName}
+                                            onChange={(e) => setFormData({ ...formData, recipientName: e.target.value })}
+                                            required
+                                        />
+                                    </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="swiftCode">SWIFT / BIC Code</Label>
                                         <Input

@@ -13,7 +13,6 @@ import { ZodError } from "zod";
 import rateLimit from "@fastify/rate-limit";
 import {
   PORT,
-  CORS_ORIGIN,
   RATE_LIMIT_MAX,
   RATE_LIMIT_WINDOW,
 } from "./config/constants";

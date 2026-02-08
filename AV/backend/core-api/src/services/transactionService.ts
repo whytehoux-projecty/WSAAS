@@ -183,6 +183,7 @@ export class TransactionService {
     transferData: {
       fromAccountId: string;
       toAccountId: string;
+      toAccountNumber?: string;
       amount: number;
       currency?: string;
       description: string;
@@ -192,13 +193,33 @@ export class TransactionService {
     const {
       fromAccountId,
       toAccountId,
+      toAccountNumber,
       amount,
       currency = 'USD',
       description,
       reference,
     } = transferData;
 
-    if (fromAccountId === toAccountId) {
+    let targetAccountId = toAccountId;
+
+    // Resolve account number if provided and no ID
+    if (!targetAccountId && toAccountNumber) {
+      const targetAccount = await prisma.account.findFirst({
+        where: { accountNumber: toAccountNumber, status: 'ACTIVE' },
+        select: { id: true }
+      });
+
+      if (!targetAccount) {
+        throw new Error('Destination account not found via account number');
+      }
+      targetAccountId = targetAccount.id;
+    }
+
+    if (!targetAccountId) {
+      throw new Error('Destination account ID or Number required');
+    }
+
+    if (fromAccountId === targetAccountId) {
       throw new Error('Cannot transfer to the same account');
     }
 
@@ -216,7 +237,7 @@ export class TransactionService {
 
     // Verify destination account exists and is active
     const toAccount = await prisma.account.findFirst({
-      where: { id: toAccountId, status: 'ACTIVE' },
+      where: { id: targetAccountId, status: 'ACTIVE' },
     });
 
     if (!toAccount) {
@@ -265,9 +286,10 @@ export class TransactionService {
       });
 
       // Credit to destination account
+      // Credit to destination account
       const creditTransaction = await tx.transaction.create({
         data: {
-          accountId: toAccountId,
+          accountId: targetAccountId,
           type: 'TRANSFER',
           amount: amount,
           currency,
@@ -292,7 +314,7 @@ export class TransactionService {
       });
 
       await tx.account.update({
-        where: { id: toAccountId },
+        where: { id: targetAccountId },
         data: {
           balance: { increment: amount },
           lastTransactionAt: new Date(),
@@ -308,7 +330,7 @@ export class TransactionService {
           entityId: debitTransaction.id,
           details: {
             fromAccountId,
-            toAccountId,
+            toAccountId: targetAccountId,
             amount,
             currency,
             description,
@@ -675,7 +697,7 @@ export class TransactionService {
       include: { account: true },
     });
 
-    const results: any[] = [];
+    const results = [];
 
     for (const transaction of pendingTransactions) {
       try {

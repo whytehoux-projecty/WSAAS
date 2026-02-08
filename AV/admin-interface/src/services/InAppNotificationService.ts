@@ -55,10 +55,16 @@ class InAppNotificationServiceClass {
             message: params.message,
             severity: params.severity || 'info',
             read: false,
-            actionUrl: params.actionUrl,
-            metadata: params.metadata,
             createdAt: new Date()
         };
+
+        if (params.actionUrl) {
+            notification.actionUrl = params.actionUrl;
+        }
+
+        if (params.metadata) {
+            notification.metadata = params.metadata;
+        }
 
         if (params.adminUserId) {
             // Send to specific admin

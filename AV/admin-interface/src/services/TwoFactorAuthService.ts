@@ -76,11 +76,11 @@ class TwoFactorAuthServiceClass {
     /**
      * Hash backup codes for storage
      */
-    private hashBackupCodes(codes: string[]): string[] {
-        return codes.map(code =>
-            crypto.createHash('sha256').update(code.replace('-', '')).digest('hex')
-        );
-    }
+    // private hashBackupCodes(codes: string[]): string[] {
+    //     return codes.map(code =>
+    //         crypto.createHash('sha256').update(code.replace('-', '')).digest('hex')
+    //     );
+    // }
 
     /**
      * Setup 2FA for an admin user
@@ -94,7 +94,7 @@ class TwoFactorAuthServiceClass {
 
         // Generate backup codes
         const backupCodes = this.generateBackupCodes();
-        const hashedBackupCodes = this.hashBackupCodes(backupCodes);
+        // const _hashedBackupCodes = this.hashBackupCodes(backupCodes);
 
         // Store temporarily (not activated until verified)
         await prisma.adminUser.update({
@@ -184,13 +184,13 @@ class TwoFactorAuthServiceClass {
     /**
      * Enable 2FA after initial verification
      */
-    async enable(adminUserId: string, secret: string, token: string, backupCodes: string[]): Promise<boolean> {
+    async enable(adminUserId: string, secret: string, token: string, _backupCodes: string[]): Promise<boolean> {
         // Verify the token first
         if (!this.verifyToken(secret, token)) {
             return false;
         }
 
-        const hashedBackupCodes = this.hashBackupCodes(backupCodes);
+        // const _hashedBackupCodes = this.hashBackupCodes(backupCodes);
 
         // In a real implementation, update the user record with 2FA details
         // This requires adding fields to the Prisma schema
@@ -202,7 +202,7 @@ class TwoFactorAuthServiceClass {
     /**
      * Disable 2FA for an admin user
      */
-    async disable(adminUserId: string, password: string): Promise<boolean> {
+    async disable(adminUserId: string, _password: string): Promise<boolean> {
         // Verify password before disabling
         const admin = await prisma.adminUser.findUnique({
             where: { id: adminUserId }
@@ -232,7 +232,7 @@ class TwoFactorAuthServiceClass {
         }
 
         const newBackupCodes = this.generateBackupCodes();
-        const hashedBackupCodes = this.hashBackupCodes(newBackupCodes);
+        // const _hashedBackupCodes = this.hashBackupCodes(newBackupCodes);
 
         // Update in database
         // ...

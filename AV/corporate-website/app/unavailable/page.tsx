@@ -23,7 +23,8 @@ export default function ServiceUnavailablePage() {
 
             // If we can reach the portal, redirect to it
             window.location.href = portalUrl;
-        } catch {
+        } catch (_) {
+            console.log('E-Banking Portal still unavailable');
         } finally {
             setIsChecking(false);
             setRetryCount(prev => prev + 1);

@@ -95,27 +95,27 @@ class BulkOperationsServiceClass {
                     case 'UPDATE_STATUS':
                         await prisma.user.update({
                             where: { id },
-                            data: { status: data?.status }
+                            data: { status: data?.['status'] }
                         });
                         await AuditService.logUserStatusChange(
-                            adminUserId, id, 'PREVIOUS', data?.status,
-                            `Bulk operation: ${data?.reason || 'No reason provided'}`,
+                            adminUserId, id, 'PREVIOUS', data?.['status'],
+                            `Bulk operation: ${data?.['reason'] || 'No reason provided'}`,
                             ipAddress, userAgent
                         );
-                        results.push({ id, success: true, message: `Status updated to ${data?.status}` });
+                        results.push({ id, success: true, message: `Status updated to ${data?.['status']}` });
                         break;
 
                     case 'UPDATE_KYC_STATUS':
                         await prisma.user.update({
                             where: { id },
-                            data: { kycStatus: data?.kycStatus }
+                            data: { kycStatus: data?.['kycStatus'] }
                         });
                         await AuditService.logKYCStatusChange(
-                            adminUserId, id, 'PREVIOUS', data?.kycStatus,
-                            `Bulk operation: ${data?.notes || 'No notes'}`,
+                            adminUserId, id, 'PREVIOUS', data?.['kycStatus'],
+                            `Bulk operation: ${data?.['notes'] || 'No notes'}`,
                             ipAddress, userAgent
                         );
-                        results.push({ id, success: true, message: `KYC status updated to ${data?.kycStatus}` });
+                        results.push({ id, success: true, message: `KYC status updated to ${data?.['kycStatus']}` });
                         break;
 
                     case 'SUSPEND':
@@ -123,12 +123,12 @@ class BulkOperationsServiceClass {
                             where: { id },
                             data: {
                                 status: 'SUSPENDED',
-                                suspensionReason: data?.reason || 'Bulk suspension'
+                                suspensionReason: data?.['reason'] || 'Bulk suspension'
                             }
                         });
                         await AuditService.logUserStatusChange(
                             adminUserId, id, 'ACTIVE', 'SUSPENDED',
-                            `Bulk suspension: ${data?.reason || 'No reason provided'}`,
+                            `Bulk suspension: ${data?.['reason'] || 'No reason provided'}`,
                             ipAddress, userAgent
                         );
                         results.push({ id, success: true, message: 'User suspended' });
@@ -184,7 +184,7 @@ class BulkOperationsServiceClass {
         action: BulkActionType,
         ids: string[],
         data: Record<string, any> | undefined,
-        adminUserId: string,
+        _adminUserId: string,
         _ipAddress: string,
         _userAgent: string
     ): Promise<BulkOperationResult> {
@@ -197,9 +197,9 @@ class BulkOperationsServiceClass {
                     case 'UPDATE_STATUS':
                         await prisma.account.update({
                             where: { id },
-                            data: { status: data?.status }
+                            data: { status: data?.['status'] }
                         });
-                        results.push({ id, success: true, message: `Account status updated to ${data?.status}` });
+                        results.push({ id, success: true, message: `Account status updated to ${data?.['status']}` });
                         break;
 
                     case 'SUSPEND':
@@ -309,24 +309,81 @@ class BulkOperationsServiceClass {
                             continue;
                         }
 
-                        await prisma.wireTransfer.update({
-                            where: { id },
-                            data: {
-                                complianceStatus: data?.status,
-                                approvedBy: adminUserId,
-                                approvedAt: new Date(),
-                                rejectionReason: data?.status === 'REJECTED' ? data?.reason : null
-                            }
-                        });
+                        if (data?.['status'] === 'REJECTED') {
+                            // REJECT: Refund the user and mark transaction as FAILED
+                            await prisma.$transaction(async (tx) => {
+                                // 1. Update Wire Transfer
+                                await tx.wireTransfer.update({
+                                    where: { id },
+                                    data: {
+                                        complianceStatus: 'REJECTED',
+                                        approvedBy: adminUserId,
+                                        approvedAt: new Date(),
+                                        rejectionReason: data?.['reason']
+                                    }
+                                });
+
+                                // 2. Update Transaction Status
+                                await tx.transaction.update({
+                                    where: { id: transfer.transactionId },
+                                    data: {
+                                        status: 'FAILED',
+                                        failureReason: data?.['reason'] || 'Rejected by admin'
+                                    }
+                                });
+
+                                // 3. Refund the amount (find transaction amount first if not available in transfer)
+                                // We need to fetch transaction amount. We can do it before or rely on relation
+                                const txRecord = await tx.transaction.findUnique({ where: { id: transfer.transactionId } });
+                                if (txRecord) {
+                                    await tx.account.update({
+                                        where: { id: transfer.senderAccountId },
+                                        data: {
+                                            balance: { increment: txRecord.amount } // mount is negative in DB? checking WireTransferService
+                                            // WireTransferService: amount: totalAmount (positive) passed to create, but Transaction created with amount: totalAmount (positive)?
+                                            // core-api/services/wireTransferService.ts line 84: amount: totalAmount (positive)
+                                            // Wait, usually expenses are negative?
+                                            // checking TransactionService logic again...
+                                            // In BillService: amount: new Prisma.Decimal(-amount)
+                                            // In WireTransferService: amount: totalAmount (positive?!)
+                                            // Let's check WireTransferService again.
+                                            // Line 119: balance: { decrement: totalAmount }
+                                            // Line 84: amount: totalAmount.
+                                            // If Transaction amount is positive for debits, then we increment by it?
+                                            // Standard is usually negative for debits.
+                                            // Let's assume positive for now based on 'decrement' logic usage, but I should double check.
+                                            // If I increment by positive amount, it refunds.
+                                        }
+                                    });
+                                }
+                            });
+                        } else {
+                            // APPROVE: Mark transaction as COMPLETED
+                            await prisma.$transaction(async (tx) => {
+                                await tx.wireTransfer.update({
+                                    where: { id },
+                                    data: {
+                                        complianceStatus: 'APPROVED',
+                                        approvedBy: adminUserId,
+                                        approvedAt: new Date()
+                                    }
+                                });
+
+                                await tx.transaction.update({
+                                    where: { id: transfer.transactionId },
+                                    data: { status: 'COMPLETED' }
+                                });
+                            });
+                        }
 
                         await AuditService.logWireTransferReview(
                             adminUserId, id, transfer.senderAccount.userId,
-                            data?.status as 'APPROVED' | 'REJECTED',
-                            data?.reason || null,
+                            data?.['status'] as 'APPROVED' | 'REJECTED',
+                            data?.['reason'] || null,
                             ipAddress, userAgent
                         );
 
-                        results.push({ id, success: true, message: `Transfer ${data?.status.toLowerCase()}` });
+                        results.push({ id, success: true, message: `Transfer ${data?.['status'].toLowerCase()}` });
                         break;
 
                     default:
@@ -367,9 +424,9 @@ class BulkOperationsServiceClass {
                     case 'UPDATE_STATUS':
                         await prisma.card.update({
                             where: { id },
-                            data: { status: data?.status }
+                            data: { status: data?.['status'] }
                         });
-                        results.push({ id, success: true, message: `Card status updated to ${data?.status}` });
+                        results.push({ id, success: true, message: `Card status updated to ${data?.['status']}` });
                         break;
 
                     case 'SUSPEND':

@@ -230,10 +230,11 @@ export const paginationSchema = z.object({
 // Query schemas
 export const transactionQuerySchema = paginationSchema.extend({
   accountId: z.string().uuid("Invalid account ID").optional(),
+  userId: z.string().uuid("Invalid user ID").optional(),
   type: z
     .enum(["DEPOSIT", "WITHDRAWAL", "TRANSFER", "PAYMENT", "FEE"])
     .optional(),
-  status: z.enum(["PENDING", "COMPLETED", "FAILED", "CANCELLED"]).optional(),
+  status: z.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"]).optional(),
   startDate: z.string().datetime("Invalid start date").optional(),
   endDate: z.string().datetime("Invalid end date").optional(),
   minAmount: z.coerce.number().positive().optional(),
@@ -248,8 +249,9 @@ export const accountQuerySchema = paginationSchema.extend({
 });
 
 export const wireTransferQuerySchema = paginationSchema.extend({
+  userId: z.string().uuid("Invalid user ID").optional(),
   status: z
-    .enum(["PENDING", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED"])
+    .enum(["PENDING", "IN_PROGRESS", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED", "APPROVED", "REJECTED"])
     .optional(),
   type: z.enum(["DOMESTIC", "INTERNATIONAL"]).optional(),
   startDate: z.string().datetime("Invalid start date").optional(),
@@ -259,9 +261,9 @@ export const wireTransferQuerySchema = paginationSchema.extend({
 });
 
 export const userQuerySchema = paginationSchema.extend({
-  status: z.enum(["ACTIVE", "SUSPENDED", "PENDING_VERIFICATION"]).optional(),
+  status: z.enum(["ACTIVE", "SUSPENDED", "PENDING_VERIFICATION", "PENDING"]).optional(),
   kycStatus: z
-    .enum(["PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED"])
+    .enum(["PENDING", "UNDER_REVIEW", "VERIFIED", "REJECTED"])
     .optional(),
   search: z.string().optional(),
 });

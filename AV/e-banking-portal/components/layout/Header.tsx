@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Bell, User, Globe } from 'lucide-react';
+import { User, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import {
     Select,
@@ -10,6 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { NotificationCenter } from '@/components/NotificationCenter';
 
 export function Header() {
     return (
@@ -45,14 +46,7 @@ export function Header() {
                     </div>
 
                     {/* Notifications */}
-                    <Button
-                        variant="ghost"
-                        size="small"
-                        className="text-[#FAF9F6] hover:bg-[#6B8569]/50 hover:text-white relative transition-colors"
-                    >
-                        <Bell className="h-5 w-5" />
-                        <span className="absolute top-1 right-1 w-2 h-2 bg-[#D4AF7A] rounded-full border-2 border-[#7D9B7B]"></span>
-                    </Button>
+                    <NotificationCenter />
 
                     {/* User Profile */}
                     <Button

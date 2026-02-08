@@ -37,7 +37,7 @@ export function EBankingWidget({ className = '' }: EBankingWidgetProps) {
 
             // If portal is available, redirect to it
             window.location.href = portalUrl;
-        } catch {
+        } catch (_) {
             // If portal is not available, show unavailable page
             router.push('/unavailable');
         } finally {

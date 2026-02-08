@@ -269,12 +269,23 @@ export const api = {
             const response = await apiClient.get('/api/transactions/stats', { params: { period } });
             return response.data;
         },
+
+        // Alias for internal transfers
+        create: async (transferData: any) => {
+            const response = await apiClient.post('/api/transfers', transferData);
+            return response.data;
+        },
     },
 
     // Transfers
     transfers: {
         create: async (transferData: any) => {
             const response = await apiClient.post('/api/transfers', transferData);
+            return response.data;
+        },
+
+        createWire: async (wireData: any) => {
+            const response = await apiClient.post('/api/wire-transfers', wireData);
             return response.data;
         },
 
@@ -404,6 +415,14 @@ export const api = {
             return response.data;
         },
     },
+
+    // Notifications
+    notifications: {
+        getAll: async () => {
+            const response = await apiClient.get('/api/notifications');
+            return response.data;
+        }
+    }
 };
 
 export { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken, clearTokens };

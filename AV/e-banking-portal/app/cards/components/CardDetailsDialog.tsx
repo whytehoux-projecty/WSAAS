@@ -49,11 +49,7 @@ export function CardDetailsDialog({ card }: CardDetailsDialogProps) {
                         <Label>Card Number</Label>
                         <div className="flex gap-2">
                             <Input readOnly value={card.number} className="font-mono bg-muted" />
-                            <Button
-                                variant="outline"
-                                className="h-9 w-9 p-0 flex items-center justify-center"
-                                onClick={() => handleCopy(card.number, 'Card Number')}
-                            >
+                            <Button size="icon" variant="outline" onClick={() => handleCopy(card.number, 'Card Number')}>
                                 <Copy className="h-4 w-4" />
                             </Button>
                         </div>

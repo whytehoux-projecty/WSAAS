@@ -76,7 +76,7 @@ class WebSocketServiceClass {
             });
 
             // Handle errors
-            socket.on('error', (error) => {
+            socket.on('error', (error: Error) => {
                 console.error(`WebSocket error for client ${clientId}:`, error);
                 this.clients.delete(clientId);
             });
@@ -136,7 +136,7 @@ class WebSocketServiceClass {
     broadcast(message: BroadcastMessage): void {
         const messageStr = JSON.stringify(message);
 
-        this.clients.forEach((client, clientId) => {
+        this.clients.forEach((client, _clientId) => {
             if (client.socket.readyState === 1) { // OPEN
                 client.socket.send(messageStr);
             }

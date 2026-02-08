@@ -321,7 +321,7 @@ class ActivityTimelineServiceClass {
         const type = eventTypeMap[log.action] || 'SYSTEM_EVENT';
         const { icon, color } = iconMap[type] || { icon: 'info-circle', color: 'gray' };
 
-        return {
+        const event: TimelineEvent = {
             id: `audit_${log.id}`,
             type,
             title: this.formatActionTitle(log.action),
@@ -331,22 +331,30 @@ class ActivityTimelineServiceClass {
             timestamp: log.createdAt,
             relativeTime: formatDistanceToNow(log.createdAt, { addSuffix: true }),
             formattedTime: format(log.createdAt, 'PPpp'),
-            actor: log.adminUser ? {
-                id: log.adminUser.id,
-                name: `${log.adminUser.firstName} ${log.adminUser.lastName}`,
-                email: log.adminUser.email,
-                type: 'admin' as const
-            } : undefined,
-            target: log.entityId ? {
-                id: log.entityId,
-                type: log.entityType
-            } : undefined,
             metadata: {
                 severity: log.severity,
                 category: log.category,
                 ipAddress: log.ipAddress
             }
         };
+
+        if (log.adminUser) {
+            event.actor = {
+                id: log.adminUser.id,
+                name: `${log.adminUser.firstName} ${log.adminUser.lastName}`,
+                email: log.adminUser.email,
+                type: 'admin' as const
+            };
+        }
+
+        if (log.entityId) {
+            event.target = {
+                id: log.entityId,
+                type: log.entityType
+            };
+        }
+
+        return event;
     }
 
     private formatActionTitle(action: string): string {

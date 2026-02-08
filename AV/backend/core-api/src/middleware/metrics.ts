@@ -4,7 +4,6 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-// @ts-ignore
 import client from 'prom-client';
 
 // Create a Registry
@@ -93,11 +92,11 @@ export const metricsMiddleware = async (
     const start = Date.now();
 
     // Track request
-    reply.raw.on('finish', () => {
+    reply.addHook('onResponse', async (req, res) => {
         const duration = (Date.now() - start) / 1000;
-        const route = request.routerPath || request.url;
-        const method = request.method;
-        const status = reply.statusCode.toString();
+        const route = req.routerPath || req.url;
+        const method = req.method;
+        const status = res.statusCode.toString();
 
         // Record metrics
         httpRequestDuration.observe({ method, route, status }, duration);

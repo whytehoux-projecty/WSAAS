@@ -76,9 +76,6 @@ model User {
   suspensionReason String?  @map("suspension_reason")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
-  twoFactorSecret String?   @map("two_factor_secret")
-  twoFactorEnabled Boolean  @default(false) @map("two_factor_enabled")
-  twoFactorBackupCodes String? @map("two_factor_backup_codes")
 
   // Relations
   accounts        Account[]

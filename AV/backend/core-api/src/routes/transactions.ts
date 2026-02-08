@@ -9,12 +9,16 @@ const prisma = new PrismaClient();
 // Validation schemas
 const transferSchema = z.object({
   fromAccountId: z.string(),
-  toAccountId: z.string(),
+  toAccountId: z.string().optional(),
+  toAccountNumber: z.string().optional(),
   amount: z.number().positive(),
   currency: z.string().default('USD'),
   description: z.string().min(1),
   reference: z.string().optional(),
   category: z.string().optional(),
+}).refine((data) => data.toAccountId || data.toAccountNumber, {
+  message: "Either toAccountId or toAccountNumber must be provided",
+  path: ["toAccountId"],
 });
 
 // Helper to handle service errors
@@ -144,11 +148,12 @@ export const createTransfer = async (request: FastifyRequest, reply: FastifyRepl
   try {
     const user = request.user as any;
     const validatedData = transferSchema.parse(request.body);
-    const { fromAccountId, toAccountId, amount, currency, description, reference } = validatedData;
+    const { fromAccountId, toAccountId, toAccountNumber, amount, currency, description, reference } = validatedData;
 
     const transferPayload: any = {
       fromAccountId,
       toAccountId,
+      toAccountNumber,
       amount,
       description: description || 'Transfer',
     };
@@ -337,10 +342,11 @@ export default async function transactionRoutes(fastify: FastifyInstance) {
         security: [{ bearerAuth: [] }],
         body: {
           type: 'object',
-          required: ['fromAccountId', 'toAccountId', 'amount', 'description'],
+          required: ['fromAccountId', 'amount', 'description'],
           properties: {
             fromAccountId: { type: 'string' },
             toAccountId: { type: 'string' },
+            toAccountNumber: { type: 'string' },
             amount: { type: 'number', minimum: 0.01 },
             currency: { type: 'string', default: 'USD' },
             description: { type: 'string', minLength: 1 },

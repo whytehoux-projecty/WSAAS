@@ -469,7 +469,7 @@ class ReportsServiceClass {
                 activeAccounts: accounts.filter(a => a.status === 'ACTIVE').length,
                 totalBalance: totalBalance,
                 averageBalance: accounts.length > 0 ? totalBalance / accounts.length : 0,
-                highestBalance: accounts.length > 0 ? Number(accounts[0].balance) : 0
+                highestBalance: accounts.length > 0 && accounts[0] ? Number(accounts[0].balance) : 0
             },
             data: accounts.map(a => ({
                 accountNumber: a.accountNumber,

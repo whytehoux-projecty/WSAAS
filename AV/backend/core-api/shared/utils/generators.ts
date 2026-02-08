@@ -270,7 +270,7 @@ export const validateAccountNumber = (accountNumber: string): boolean => {
  * Generate a unique backup code
  */
 export const generateBackupCode = (): string => {
-  const segments: string[] = [];
+  const segments = [];
   for (let i = 0; i < 4; i++) {
     segments.push(Math.random().toString(36).substring(2, 6).toUpperCase());
   }
@@ -281,7 +281,7 @@ export const generateBackupCode = (): string => {
  * Generate multiple backup codes
  */
 export const generateBackupCodes = (count: number = 10): string[] => {
-  const codes: string[] = [];
+  const codes = [];
   for (let i = 0; i < count; i++) {
     codes.push(generateBackupCode());
   }

@@ -3,17 +3,10 @@ import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { prisma } from '../lib/prisma';
 import { AuditService } from '../services/AuditService';
+import { userQuerySchema, transactionQuerySchema, wireTransferQuerySchema } from '@shared/validation';
 
 // Validation schemas
-const GetUsersQuerySchema = z.object({
-  page: z.string().optional().default('1').transform(Number),
-  limit: z.string().optional().default('20').transform(Number),
-  search: z.string().optional(),
-  status: z.enum(['ACTIVE', 'SUSPENDED', 'PENDING']).optional(),
-  kycStatus: z.enum(['PENDING', 'UNDER_REVIEW', 'VERIFIED', 'REJECTED']).optional(),
-  sortBy: z.enum(['createdAt', 'firstName', 'lastName', 'email']).optional().default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-});
+
 
 const UpdateUserStatusSchema = z.object({
   status: z.enum(['ACTIVE', 'SUSPENDED']),
@@ -25,34 +18,7 @@ const UpdateKYCStatusSchema = z.object({
   reviewNotes: z.string().optional(),
 });
 
-const GetTransactionsQuerySchema = z.object({
-  page: z.string().optional().default('1').transform(Number),
-  limit: z.string().optional().default('50').transform(Number),
-  userId: z.string().optional(),
-  accountId: z.string().optional(),
-  type: z.enum(['DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'PAYMENT']).optional(),
-  status: z.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED']).optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  minAmount: z.string().optional().transform(Number),
-  maxAmount: z.string().optional().transform(Number),
-  sortBy: z.enum(['createdAt', 'amount', 'status']).optional().default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-});
 
-const GetWireTransfersQuerySchema = z.object({
-  page: z.string().optional().default('1').transform(Number),
-  limit: z.string().optional().default('50').transform(Number),
-  userId: z.string().optional(),
-  status: z.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED']).optional(),
-  type: z.enum(['DOMESTIC', 'INTERNATIONAL']).optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  minAmount: z.string().optional().transform(Number),
-  maxAmount: z.string().optional().transform(Number),
-  sortBy: z.enum(['createdAt', 'amount', 'status']).optional().default('createdAt'),
-  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
-});
 
 const UpdateWireTransferStatusSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED', 'CANCELLED']),
@@ -171,8 +137,8 @@ export class AdminController {
    */
   static async getUsers(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const query = GetUsersQuerySchema.parse(request.query);
-      const { page, limit, search, status, kycStatus, sortBy, sortOrder } = query;
+      const query = userQuerySchema.parse(request.query);
+      const { page, limit, search, status, kycStatus, sortBy = 'createdAt', sortOrder } = query;
       const skip = (page - 1) * limit;
 
       const where: any = {};
@@ -193,7 +159,7 @@ export class AdminController {
           where,
           skip,
           take: limit,
-          orderBy: { [sortBy]: sortOrder },
+          orderBy: { [sortBy]: sortOrder } as any,
           include: {
             accounts: {
               select: {
@@ -339,8 +305,8 @@ export class AdminController {
    */
   static async getTransactions(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const query = GetTransactionsQuerySchema.parse(request.query);
-      const { page, limit, userId, accountId, type, status, startDate, endDate, minAmount, maxAmount, sortBy, sortOrder } = query;
+      const query = transactionQuerySchema.parse(request.query);
+      const { page, limit, userId, accountId, type, status, startDate, endDate, minAmount, maxAmount, sortBy = 'createdAt', sortOrder } = query;
       const skip = (page - 1) * limit;
 
       const where: any = {};
@@ -359,7 +325,7 @@ export class AdminController {
           where,
           skip,
           take: limit,
-          orderBy: { [sortBy]: sortOrder },
+          orderBy: { [sortBy]: sortOrder } as any,
           include: {
             account: {
               include: {
@@ -398,8 +364,8 @@ export class AdminController {
    */
   static async getWireTransfers(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const query = GetWireTransfersQuerySchema.parse(request.query);
-      const { page, limit, userId, status, startDate, endDate, minAmount, maxAmount, sortBy, sortOrder } = query;
+      const query = wireTransferQuerySchema.parse(request.query);
+      const { page, limit, userId, status, startDate, endDate, minAmount, maxAmount, sortBy = 'createdAt', sortOrder } = query;
       const skip = (page - 1) * limit;
 
       const where: any = {};
@@ -416,7 +382,7 @@ export class AdminController {
           where,
           skip,
           take: limit,
-          orderBy: { [sortBy]: sortOrder },
+          orderBy: { [sortBy]: sortOrder } as any,
           include: {
             transaction: true,
             senderAccount: {

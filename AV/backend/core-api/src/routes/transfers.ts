@@ -40,10 +40,11 @@ export default async function transferRoutes(fastify: FastifyInstance) {
                 tags: ['Transfers'],
                 body: {
                     type: 'object',
-                    required: ['fromAccountId', 'toAccountId', 'amount', 'description'],
+                    required: ['fromAccountId', 'amount', 'description'],
                     properties: {
                         fromAccountId: { type: 'string' },
                         toAccountId: { type: 'string' },
+                        toAccountNumber: { type: 'string' },
                         amount: { type: 'number', minimum: 0.01 },
                         currency: { type: 'string', default: 'USD' },
                         description: { type: 'string', minLength: 1 },

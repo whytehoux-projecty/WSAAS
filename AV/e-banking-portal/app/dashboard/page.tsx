@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Overview } from '@/components/dashboard/overview';
 import { RecentTransactions } from '@/components/dashboard/recent-sales';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import { formatCurrency } from '@/lib/utils';
 
 interface UserProfile {
@@ -48,6 +49,8 @@ function DashboardContent() {
         savingsGoal: 12500,
     });
     const [transactions, setTransactions] = useState<any[]>([]);
+    const [analyticsData, setAnalyticsData] = useState<any[]>([]);
+    const [activeTab, setActiveTab] = useState("overview");
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -79,6 +82,11 @@ function DashboardContent() {
 
             setTransactions(recentTx.transactions || []);
 
+            // Process analytics data from larger set (fetching 50 for demo)
+            const analyticsTx = await api.transactions.getAll({ limit: 50 });
+            const processedData = processChartData(analyticsTx.transactions || []);
+            setAnalyticsData(processedData);
+
         } catch (error) {
             console.error('Error loading dashboard:', error);
         } finally {
@@ -89,21 +97,44 @@ function DashboardContent() {
     if (isLoading) {
         return (
             <div className="flex-1 space-y-4 p-8 pt-6">
-                <div className="flex items-center justify-between space-y-2">
-                    <Skeleton className="h-8 w-[150px]" />
-                    <Skeleton className="h-8 w-[200px]" />
-                </div>
-                <div className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Skeleton className="h-[120px] rounded-xl" />
-                        <Skeleton className="h-[120px] rounded-xl" />
-                        <Skeleton className="h-[120px] rounded-xl" />
-                        <Skeleton className="h-[120px] rounded-xl" />
-                    </div>
+                <Skeleton className="h-[200px] w-full rounded-xl" />
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Skeleton className="h-[100px] rounded-xl" />
+                    <Skeleton className="h-[100px] rounded-xl" />
+                    <Skeleton className="h-[100px] rounded-xl" />
+                    <Skeleton className="h-[100px] rounded-xl" />
                 </div>
             </div>
         )
     }
+
+    const processChartData = (txs: any[]) => {
+        const monthlyData: Record<string, { name: string, income: number, expense: number }> = {};
+
+        // Sort by date ascending to process
+        const sortedTxs = [...txs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+        sortedTxs.forEach(tx => {
+            const date = new Date(tx.createdAt);
+            const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+            const monthName = date.toLocaleString('default', { month: 'short' });
+
+            if (!monthlyData[monthKey]) {
+                monthlyData[monthKey] = { name: monthName, income: 0, expense: 0 };
+            }
+
+            // Assuming positive amount is income (deposit) and negative is expense
+            // Check type as well for accuracy if needed
+            const amt = Number(tx.amount);
+            if (amt > 0) {
+                monthlyData[monthKey].income += amt;
+            } else {
+                monthlyData[monthKey].expense += Math.abs(amt);
+            }
+        });
+
+        return Object.values(monthlyData);
+    };
 
     return (
         <div className="flex-1 space-y-4 p-4 pt-0">
@@ -118,10 +149,10 @@ function DashboardContent() {
                 </div>
             </div>
 
-            <Tabs defaultValue="overview" className="space-y-4">
+            <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="analytics" disabled>Analytics</TabsTrigger>
+                    <TabsTrigger value="analytics">Analytics</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
@@ -206,6 +237,55 @@ function DashboardContent() {
                             </CardHeader>
                             <CardContent>
                                 <RecentTransactions transactions={transactions} />
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="analytics" className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                        <Card className="col-span-4">
+                            <CardHeader>
+                                <CardTitle>Financial Analysis</CardTitle>
+                                <CardDescription>Income vs Expenses over time</CardDescription>
+                            </CardHeader>
+                            <CardContent className="pl-2">
+                                <Overview data={analyticsData} />
+                            </CardContent>
+                        </Card>
+                        <Card className="col-span-3">
+                            <CardHeader>
+                                <CardTitle>Savings Progress</CardTitle>
+                                <CardDescription>Progress towards your goal of {formatCurrency(stats.savingsGoal)}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-8">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="font-medium">Total Saved</span>
+                                        <span className="font-bold">{formatCurrency(stats.totalBalance)}</span>
+                                    </div>
+                                    <div className="w-full">
+                                        <Progress
+                                            value={(stats.totalBalance / stats.savingsGoal) * 100}
+                                            className="h-2"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground text-right">
+                                        {((stats.totalBalance / stats.savingsGoal) * 100).toFixed(1)}% of goal
+                                    </p>
+                                </div>
+
+                                <div className="pt-4 border-t">
+                                    <h4 className="text-sm font-medium mb-3">Top Categories</h4>
+                                    <div className="space-y-3">
+                                        {['Shopping', 'Utilities', 'Entertainment'].map((cat, i) => (
+                                            <div key={cat} className="flex items-center justify-between text-sm">
+                                                <span className="text-muted-foreground">{cat}</span>
+                                                <span className="font-bold">{formatCurrency(120 + i * 50)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
