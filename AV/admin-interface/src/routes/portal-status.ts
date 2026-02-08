@@ -39,7 +39,7 @@ export default async function portalStatusApiRoutes(fastify: FastifyInstance) {
 
             return reply.send(response.data);
         } catch (error: any) {
-            fastify.log.error('Error fetching portal status:', error?.message);
+            fastify.log.error(error, 'Error fetching portal status:');
 
             if (error.response) {
                 return reply.status(error.response.status).send(error.response.data);
@@ -96,7 +96,7 @@ export default async function portalStatusApiRoutes(fastify: FastifyInstance) {
 
             return reply.send(response.data);
         } catch (error: any) {
-            fastify.log.error('Error updating portal status:', error?.message);
+            fastify.log.error(error, 'Error updating portal status:');
 
             if (error.response) {
                 return reply.status(error.response.status).send(error.response.data);
@@ -143,7 +143,7 @@ export default async function portalStatusApiRoutes(fastify: FastifyInstance) {
 
             return reply.send(response.data);
         } catch (error: any) {
-            fastify.log.error('Error fetching portal status history:', error?.message);
+            fastify.log.error(error, 'Error fetching portal status history:');
 
             if (error.response) {
                 return reply.status(error.response.status).send(error.response.data);
@@ -171,7 +171,7 @@ export default async function portalStatusApiRoutes(fastify: FastifyInstance) {
 
             return reply.send(response.data);
         } catch (error: any) {
-            fastify.log.error('Error fetching portal health:', error?.message);
+            fastify.log.error(error, 'Error fetching portal health:');
 
             if (error.response) {
                 return reply.status(error.response.status).send(error.response.data);
