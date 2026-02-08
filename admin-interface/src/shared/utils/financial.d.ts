@@ -1,0 +1,35 @@
+export declare const formatCurrency: (amount: number, currency?: string, locale?: string) => string;
+export declare const formatAmount: (amount: number, decimals?: number, locale?: string) => string;
+export declare const parseCurrency: (currencyString: string) => number;
+export declare const roundAmount: (amount: number, decimals?: number) => number;
+export declare const centsToDollars: (cents: number) => number;
+export declare const dollarsToCents: (dollars: number) => number;
+export declare const calculatePercentage: (value: number, total: number) => number;
+export declare const calculatePercentageChange: (oldValue: number, newValue: number) => number;
+export declare const calculateCompoundInterest: (principal: number, rate: number, time: number, compoundingFrequency?: number) => number;
+export declare const calculateSimpleInterest: (principal: number, rate: number, time: number) => number;
+export declare const calculateMonthlyPayment: (principal: number, annualRate: number, years: number) => number;
+export declare const calculateTotalInterest: (principal: number, annualRate: number, years: number) => number;
+export declare const calculateAPR: (loanAmount: number, totalInterest: number, fees: number, termInYears: number) => number;
+export declare const convertCurrency: (amount: number, exchangeRate: number, inverse?: boolean) => number;
+export declare const calculateWireTransferFee: (_amount: number, isInternational: boolean, domesticFee?: number, internationalFee?: number) => number;
+export declare const calculateTransactionFee: (amount: number, feePercentage: number, minimumFee?: number, maximumFee?: number) => number;
+export declare const calculateNewBalance: (currentBalance: number, transactionAmount: number, transactionType: "DEBIT" | "CREDIT") => number;
+export declare const isWithinDailyLimit: (currentDayTotal: number, newAmount: number, dailyLimit: number) => boolean;
+export declare const isWithinMonthlyLimit: (currentMonthTotal: number, newAmount: number, monthlyLimit: number) => boolean;
+export declare const getRemainingDailyLimit: (currentDayTotal: number, dailyLimit: number) => number;
+export declare const getRemainingMonthlyLimit: (currentMonthTotal: number, monthlyLimit: number) => number;
+export declare const calculateBalanceTrend: (currentBalance: number, previousBalance: number) => "up" | "down" | "stable";
+export declare const calculateAverageTransactionAmount: (transactions: number[]) => number;
+export declare const calculateTransactionVolume: (transactions: number[]) => number;
+export declare const calculateNetTransactionAmount: (transactions: number[]) => number;
+export declare const formatLargeNumber: (num: number) => string;
+export declare const calculateCreditUtilization: (currentBalance: number, creditLimit: number) => number;
+export declare const calculateMinimumPayment: (balance: number, minimumPercentage?: number, minimumAmount?: number) => number;
+export declare const validateAmount: (amount: number, minAmount?: number, maxAmount?: number) => {
+    isValid: boolean;
+    error?: string;
+};
+export declare const calculateTax: (amount: number, taxRate: number) => number;
+export declare const calculateAmountAfterTax: (amount: number, taxRate: number) => number;
+//# sourceMappingURL=financial.d.ts.map

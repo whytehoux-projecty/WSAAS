@@ -1,0 +1,38 @@
+export * from './date';
+export * from './generators';
+export * from './financial';
+export declare const sleep: (ms: number) => Promise<void>;
+export declare const retry: <T>(fn: () => Promise<T>, maxAttempts?: number, baseDelay?: number) => Promise<T>;
+export declare const debounce: <T extends (...args: any[]) => any>(func: T, wait: number) => ((...args: Parameters<T>) => void);
+export declare const throttle: <T extends (...args: any[]) => any>(func: T, limit: number) => ((...args: Parameters<T>) => void);
+export declare const deepClone: <T>(obj: T) => T;
+export declare const isEmpty: (obj: any) => boolean;
+export declare const omit: <T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]) => Omit<T, K>;
+export declare const pick: <T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]) => Pick<T, K>;
+export declare const capitalize: (str: string) => string;
+export declare const toTitleCase: (str: string) => string;
+export declare const camelToSnake: (str: string) => string;
+export declare const snakeToCamel: (str: string) => string;
+export declare const truncate: (str: string, length: number, suffix?: string) => string;
+export declare const slugify: (str: string) => string;
+export declare const isValidEmail: (email: string) => boolean;
+export declare const isValidPhone: (phone: string) => boolean;
+export declare const sanitizeString: (str: string) => string;
+export declare const generateRandomColor: () => string;
+export declare const formatFileSize: (bytes: number) => string;
+export declare const getFileExtension: (filename: string) => string;
+export declare const isImageFile: (filename: string) => boolean;
+export declare const isDocumentFile: (filename: string) => boolean;
+export declare const parseUserAgent: (userAgent: string) => {
+    browser: string;
+    os: string;
+    device: string;
+};
+export declare const getClientIP: (headers: Record<string, string | string[] | undefined>) => string;
+export declare const simpleHash: (str: string) => number;
+export declare const isNumeric: (value: any) => boolean;
+export declare const safeJsonParse: <T>(str: string, defaultValue: T) => T;
+export declare const safeJsonStringify: (obj: any, defaultValue?: string) => string;
+export declare const objectToQueryString: (obj: Record<string, any>) => string;
+export declare const queryStringToObject: (queryString: string) => Record<string, string>;
+//# sourceMappingURL=index.d.ts.map

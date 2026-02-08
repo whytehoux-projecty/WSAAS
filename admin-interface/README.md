@@ -157,18 +157,18 @@ npm run format
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `JWT_SECRET` | Secret key for JWT signing | Required |
-| `JWT_EXPIRES_IN` | JWT token expiration time | `24h` |
-| `PORT` | Server port | `3003` |
-| `NODE_ENV` | Environment mode | `development` |
-| `CORS_ORIGIN` | Allowed CORS origin | `http://localhost:4000` |
-| `COOKIE_SECRET` | Secret for cookie signing | Required |
-| `RATE_LIMIT_MAX` | Max requests per window | `100` |
-| `RATE_LIMIT_WINDOW` | Rate limit window (ms) | `900000` |
-| `LOG_LEVEL` | Logging level | `info` |
+| Variable            | Description                  | Default                 |
+| :------------------ | :--------------------------- | :---------------------- |
+| `DATABASE_URL`      | PostgreSQL connection string | Required                |
+| `JWT_SECRET`        | Secret key for JWT signing   | Required                |
+| `JWT_EXPIRES_IN`    | JWT token expiration time    | `24h`                   |
+| `PORT`              | Server port                  | `3003`                  |
+| `NODE_ENV`          | Environment mode             | `development`           |
+| `CORS_ORIGIN`       | Allowed CORS origin          | `http://localhost:4000` |
+| `COOKIE_SECRET`     | Secret for cookie signing    | Required                |
+| `RATE_LIMIT_MAX`    | Max requests per window      | `100`                   |
+| `RATE_LIMIT_WINDOW` | Rate limit window (ms)       | `900000`                |
+| `LOG_LEVEL`         | Logging level                | `info`                  |
 
 ## Monitoring & Logging
 

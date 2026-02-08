@@ -2,10 +2,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "commonjs",
-    "lib": [
-      "ES2022"
-    ],
+    "lib": ["ES2022"],
     "outDir": "./dist",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -26,30 +25,17 @@
     "noUncheckedIndexedAccess": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": [
-        "./src/shared/*",
-        "../backend/shared/*"
-      ],
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./*"]
     }
   },
   "include": [
-    "src/**/*",
-    "../backend/shared/**/*"
+    "**/*.ts",
+    "**/*.d.ts"
   ],
   "exclude": [
-    "dist",
-    "tests",
-    "**/*.test.ts"
-  ],
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node"
-  }
+    "node_modules",
+    "dist"
+  ]
 }
