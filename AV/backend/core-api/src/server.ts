@@ -11,7 +11,6 @@ import crypto from 'crypto';
 
 // Configuration
 import config from './config/environment';
-import { validateEnvironment } from './config/validateEnv';
 import { swaggerConfig, swaggerUiConfig } from './config/swagger';
 
 // Database and services
@@ -33,10 +32,10 @@ import wireTransferRoutes from './routes/wire-transfers';
 import systemRoutes from './routes/system';
 import portalRoutes from './routes/portal';
 import billRoutes from './routes/bills';
-import transferRoutes from './routes/transfers';
 
 import verificationRoutes from './routes/admin/verifications';
 
+// Initialize Fastify
 const fastify = Fastify({
   logger: config.NODE_ENV === 'development',
   requestIdHeader: 'x-request-id',
@@ -149,14 +148,9 @@ const gracefulShutdown = async (signal: string) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Export fastify instance for testing
-export { fastify };
-
-export const setupApp = async () => {
+// Start server
+const start = async () => {
   try {
-    // Validate environment variables first
-    validateEnvironment();
-
     // Connect to databases
     await db.connect();
 
@@ -228,22 +222,10 @@ export const setupApp = async () => {
     await fastify.register(transactionRoutes, { prefix: '/api/transactions' });
     await fastify.register(kycRoutes, { prefix: '/api/kyc' });
     await fastify.register(wireTransferRoutes, { prefix: '/api/wire-transfers' });
-    await fastify.register(transferRoutes, { prefix: '/api/transfers' });
     await fastify.register(billRoutes, { prefix: '/api/bills' });
     await fastify.register(verificationRoutes, { prefix: '/api/admin/verifications' });
 
-    return fastify;
-  } catch (error) {
-    log.error('Failed to setup app', error);
-    throw error;
-  }
-};
-
-// Start server
-const start = async () => {
-  try {
-    await setupApp();
-
+    // Start server
     await fastify.listen({
       port: config.PORT,
       host: config.HOST,
@@ -257,6 +239,4 @@ const start = async () => {
   }
 };
 
-if (process.env['NODE_ENV'] !== 'test') {
-  start();
-}
+start();

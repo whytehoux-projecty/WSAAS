@@ -197,7 +197,7 @@ const payBill = async (request: FastifyRequest, reply: FastifyReply) => {
 const payBillVerified = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const parts = request.parts();
-    let body: any = {};
+    const body: Record<string, string> = {};
     let filePath = '';
 
     for await (const part of parts) {
@@ -208,13 +208,13 @@ const payBillVerified = async (request: FastifyRequest, reply: FastifyReply) => 
         // Since I can't write to random dirs easily without setup, I'll mock the path.
         filePath = `/uploads/verifications/${Date.now()}_${part.filename}`;
       } else {
-        body[part.fieldname] = part.value;
+        body[part.fieldname] = String(part.value);
       }
     }
 
     const { payeeId, amount, accountId } = payBillSchema.parse({
       ...body,
-      amount: Number(body.amount), // Ensure amount is a number
+      amount: Number(body['amount']), // Ensure amount is a number
     });
 
     const user = request.user as any;

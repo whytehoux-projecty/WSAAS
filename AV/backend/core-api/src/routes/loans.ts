@@ -1,5 +1,5 @@
 
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { LoanService } from '../services/loan.service';
 import { PrismaClient } from '@prisma/client';

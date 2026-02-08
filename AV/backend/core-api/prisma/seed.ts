@@ -1,54 +1,58 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import crypto from 'crypto';
+import { 
+  generateAccountNumber, 
+  generateTransactionId, 
+  generateWireTransferReference 
+} from '../shared/utils/generators';
 
 const prisma = new PrismaClient();
-
-// Inline generators to avoid module resolution issues
-const generateAccountNumber = (): string => {
-  const prefix = '21';
-  const length = 10;
-  let number = "";
-  for (let i = 0; i < length; i++) {
-    number += Math.floor(Math.random() * 10).toString();
-  }
-  return prefix + number;
-};
-
-const generateTransactionId = (): string => {
-  return `TXN_${crypto.randomUUID().replace(/-/g, "").toUpperCase()}`;
-};
-
-const generateWireTransferReference = (): string => {
-  return `WIRE_${crypto.randomUUID().replace(/-/g, "").toUpperCase().substring(0, 16)}`;
-};
 
 async function main() {
   console.log('🌱 Starting database seeding...');
 
   // Create admin users
   console.log('👤 Creating admin users...');
-
+  
   const adminPassword = await bcrypt.hash('admin123!', 12);
-
-  // Create admin user directly (AdminUser is independent in schema)
-  await prisma.adminUser.upsert({
+// Create admin user
+  const adminUser = await prisma.user.upsert({
     where: { email: 'admin@aurumvault.com' },
     update: {},
     create: {
       email: 'admin@aurumvault.com',
-      password: adminPassword,
+      passwordHash: adminPassword,
       firstName: 'System',
       lastName: 'Administrator',
-      role: 'SUPER_ADMIN',
-      permissions: '*', // Schema defines this as String
+      phone: '+1-555-0100',
+      dateOfBirth: new Date('1980-01-01'),
+      address: {
+        street: '123 Admin Street',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '10001',
+        country: 'US',
+      },
       status: 'ACTIVE',
+      kycStatus: 'VERIFIED',
+      kycCompletedAt: new Date(),
+    },
+  });
+
+  await prisma.adminUser.upsert({
+    where: { userId: adminUser.id },
+    update: {},
+    create: {
+      userId: adminUser.id,
+      role: 'SUPER_ADMIN',
+      permissions: ['*'],
+      isActive: true,
     },
   });
 
   // Create sample customers
   console.log('👥 Creating sample customers...');
-
+  
   const customers = [
     {
       email: 'john.doe@example.com',
@@ -63,9 +67,6 @@ async function main() {
         zipCode: '90210',
         country: 'US',
       },
-      tier: 'GOLD',
-      annualIncome: 120000,
-      employmentStatus: 'EMPLOYED'
     },
     {
       email: 'jane.smith@example.com',
@@ -80,9 +81,6 @@ async function main() {
         zipCode: '60601',
         country: 'US',
       },
-      tier: 'PLATINUM',
-      annualIncome: 250000,
-      employmentStatus: 'SELF_EMPLOYED'
     },
     {
       email: 'mike.johnson@example.com',
@@ -97,35 +95,21 @@ async function main() {
         zipCode: '33101',
         country: 'US',
       },
-      tier: 'BASIC',
-      annualIncome: 60000,
-      employmentStatus: 'EMPLOYED'
     },
   ];
 
   const createdUsers = [];
   for (const customer of customers) {
     const password = await bcrypt.hash('password123!', 12);
-
-    // Deconstruct fields that don't belong to User model
-    const { address, annualIncome, employmentStatus, ...userData } = customer;
-
-    // Need to handle Address relation correctly
-    // User model: address Address?
-    // Address model: userId String @unique
-
-    // We create User, then Address linked to it. But Prisma allows nested create.
     const user = await prisma.user.upsert({
-      where: { email: userData.email },
+      where: { email: customer.email },
       update: {},
       create: {
-        ...userData,
-        password: password,
+        ...customer,
+        passwordHash: password,
         status: 'ACTIVE',
         kycStatus: 'VERIFIED',
-        address: {
-          create: address
-        }
+        kycCompletedAt: new Date(),
       },
     });
     createdUsers.push(user);
@@ -133,7 +117,8 @@ async function main() {
 
   // Create accounts for customers
   console.log('🏦 Creating bank accounts...');
-
+  
+  const accountTypes = ['CHECKING', 'SAVINGS', 'BUSINESS'];
   const createdAccounts = [];
 
   for (const user of createdUsers) {
@@ -143,10 +128,19 @@ async function main() {
         userId: user.id,
         accountNumber: generateAccountNumber(),
         accountType: 'CHECKING',
-        balance: Math.floor(Math.random() * 50000) + 5000,
+        balance: Math.floor(Math.random() * 50000) + 5000, // $5,000 - $55,000
+        availableBalance: 0, // Will be set to balance
         currency: 'USD',
         status: 'ACTIVE',
+        bankName: 'Aurum Vault',
+        routingNumber: '021000021',
       },
+    });
+
+    // Update available balance
+    await prisma.account.update({
+      where: { id: checkingAccount.id },
+      data: { availableBalance: checkingAccount.balance },
     });
 
     createdAccounts.push(checkingAccount);
@@ -158,10 +152,18 @@ async function main() {
           userId: user.id,
           accountNumber: generateAccountNumber(),
           accountType: 'SAVINGS',
-          balance: Math.floor(Math.random() * 100000) + 10000,
+          balance: Math.floor(Math.random() * 100000) + 10000, // $10,000 - $110,000
+          availableBalance: 0,
           currency: 'USD',
           status: 'ACTIVE',
+          bankName: 'Aurum Vault',
+          routingNumber: '021000021',
         },
+      });
+
+      await prisma.account.update({
+        where: { id: savingsAccount.id },
+        data: { availableBalance: savingsAccount.balance },
       });
 
       createdAccounts.push(savingsAccount);
@@ -170,7 +172,7 @@ async function main() {
 
   // Create sample transactions
   console.log('💳 Creating sample transactions...');
-
+  
   const transactionTypes = ['DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'PAYMENT'];
   const descriptions = [
     'Direct Deposit - Salary',
@@ -186,54 +188,142 @@ async function main() {
   for (let i = 0; i < 50; i++) {
     const account = createdAccounts[Math.floor(Math.random() * createdAccounts.length)];
     const transactionType = transactionTypes[Math.floor(Math.random() * transactionTypes.length)];
-    const amount = Math.floor(Math.random() * 2000) + 10;
+    const amount = Math.floor(Math.random() * 2000) + 10; // $10 - $2,010
     const description = descriptions[Math.floor(Math.random() * descriptions.length)];
-
+    
+    // Create transaction date within last 30 days
     const transactionDate = new Date();
     transactionDate.setDate(transactionDate.getDate() - Math.floor(Math.random() * 30));
 
     await prisma.transaction.create({
       data: {
         id: generateTransactionId(),
-        accountId: account.id, // Only one account link in schema (accountId)
+        fromAccountId: transactionType === 'WITHDRAWAL' || transactionType === 'PAYMENT' ? account.id : undefined,
+        toAccountId: transactionType === 'DEPOSIT' || transactionType === 'TRANSFER' ? account.id : undefined,
         amount,
         type: transactionType,
         status: 'COMPLETED',
         description,
-        reference: `REF-${Math.random().toString(36).substring(7).toUpperCase()}`, // Unique reference required
         createdAt: transactionDate,
-        metadata: JSON.stringify({
+        completedAt: transactionDate,
+        metadata: {
           channel: Math.random() > 0.5 ? 'ONLINE' : 'ATM',
           location: 'New York, NY',
-        }),
+        },
+      },
+    });
+  }
+
+  // Create sample wire transfers
+  console.log('🌐 Creating sample wire transfers...');
+  
+  for (let i = 0; i < 10; i++) {
+    const fromAccount = createdAccounts[Math.floor(Math.random() * createdAccounts.length)];
+    const amount = Math.floor(Math.random() * 10000) + 1000; // $1,000 - $11,000
+    const type = Math.random() > 0.5 ? 'DOMESTIC' : 'INTERNATIONAL';
+    
+    const wireTransferDate = new Date();
+    wireTransferDate.setDate(wireTransferDate.getDate() - Math.floor(Math.random() * 15));
+
+    await prisma.wireTransfer.create({
+      data: {
+        referenceNumber: generateWireTransferReference(),
+        fromAccountId: fromAccount.id,
+        amount,
+        fee: type === 'INTERNATIONAL' ? 45 : 25,
+        currency: 'USD',
+        type,
+        purpose: 'Business Payment',
+        beneficiaryName: `Beneficiary ${i + 1}`,
+        beneficiaryAddress: {
+          street: '123 Beneficiary St',
+          city: 'Beneficiary City',
+          state: 'BC',
+          zipCode: '12345',
+          country: type === 'INTERNATIONAL' ? 'CA' : 'US',
+        },
+        beneficiaryBankName: `Bank ${i + 1}`,
+        beneficiaryBankAddress: {
+          street: '456 Bank St',
+          city: 'Bank City',
+          state: 'BC',
+          zipCode: '67890',
+          country: type === 'INTERNATIONAL' ? 'CA' : 'US',
+        },
+        swiftCode: type === 'INTERNATIONAL' ? 'BANKCA22' : undefined,
+        routingNumber: type === 'DOMESTIC' ? '021000021' : undefined,
+        accountNumber: `ACC${String(i + 1).padStart(10, '0')}`,
+        status: Math.random() > 0.2 ? 'COMPLETED' : 'PENDING',
+        createdAt: wireTransferDate,
+        completedAt: Math.random() > 0.2 ? wireTransferDate : undefined,
+      },
+    });
+  }
+
+  // Create sample KYC documents
+  console.log('📄 Creating sample KYC documents...');
+  
+  for (const user of createdUsers) {
+    // Government ID
+    await prisma.kYCDocument.create({
+      data: {
+        userId: user.id,
+        type: 'GOVERNMENT_ID',
+        fileName: `${user.firstName}_${user.lastName}_ID.pdf`,
+        filePath: `/uploads/kyc/${user.id}/government_id.pdf`,
+        fileSize: 1024 * 1024, // 1MB
+        mimeType: 'application/pdf',
+        status: 'VERIFIED',
+        reviewedAt: new Date(),
+        reviewNotes: 'Document verified successfully',
+      },
+    });
+
+    // Proof of Address
+    await prisma.kYCDocument.create({
+      data: {
+        userId: user.id,
+        type: 'PROOF_OF_ADDRESS',
+        fileName: `${user.firstName}_${user.lastName}_Address.pdf`,
+        filePath: `/uploads/kyc/${user.id}/proof_of_address.pdf`,
+        fileSize: 512 * 1024, // 512KB
+        mimeType: 'application/pdf',
+        status: 'VERIFIED',
+        reviewedAt: new Date(),
+        reviewNotes: 'Address verified successfully',
       },
     });
   }
 
   // Create audit logs
   console.log('📋 Creating audit logs...');
-
-  const admin = await prisma.adminUser.findUnique({ where: { email: 'admin@aurumvault.com' } });
-
-  if (admin) {
+  
+  for (const user of [...createdUsers, adminUser]) {
     await prisma.auditLog.create({
       data: {
-        adminUserId: admin.id,
-        action: 'SYSTEM_INIT',
-        entityType: 'SYSTEM',
-        details: 'Database seeded',
-        ipAddress: '127.0.0.1',
+        userId: user.id,
+        action: 'USER_LOGIN',
+        details: { loginMethod: 'email' },
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         createdAt: new Date(),
       },
     });
   }
 
   console.log('✅ Database seeding completed successfully!');
-
+  console.log('\n📊 Summary:');
+  console.log(`- Created ${createdUsers.length + 1} users (including admin)`);
+  console.log(`- Created ${createdAccounts.length} bank accounts`);
+  console.log('- Created 50 sample transactions');
+  console.log('- Created 10 sample wire transfers');
+  console.log(`- Created ${createdUsers.length * 2} KYC documents`);
+  console.log(`- Created ${createdUsers.length + 1} audit log entries`);
+  
   console.log('\n🔐 Admin Credentials:');
   console.log('Email: admin@aurumvault.com');
   console.log('Password: admin123!');
-
+  
   console.log('\n👤 Sample Customer Credentials:');
   customers.forEach(customer => {
     console.log(`Email: ${customer.email} | Password: password123!`);

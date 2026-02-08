@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { ERROR_CODES, KYC_CONFIG } from '../../shared/index';
+import { ERROR_CODES, KYC_CONFIG } from '@shared/index';
 import crypto from 'crypto';
 import fs from 'fs/promises';
 

@@ -6,9 +6,9 @@ services:
     image: postgres:15-alpine
     container_name: novabank-db
     environment:
-      POSTGRES_DB: aurumvault
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: novabank
+      POSTGRES_USER: novabank_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password_123}
     ports:
       - "5432:5432"
     volumes:
@@ -18,7 +18,7 @@ services:
       - novabank-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d aurumvault"]
+      test: ["CMD-SHELL", "pg_isready -U novabank_admin -d novabank"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -34,9 +34,9 @@ services:
     networks:
       - novabank-network
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_123}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3

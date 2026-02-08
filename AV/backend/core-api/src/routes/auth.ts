@@ -581,34 +581,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
         });
       }
     }
-
-  );
-
-  // Profile alias
-  fastify.get(
-    '/profile',
-    {
-      preHandler: [fastify.authenticate],
-    },
-    getProfile
-  );
-
-  // Update profile
-  fastify.put(
-    '/profile',
-    {
-      preHandler: [fastify.authenticate],
-    },
-    updateProfile
-  );
-
-  // Change password
-  fastify.post(
-    '/change-password',
-    {
-      preHandler: [fastify.authenticate],
-    },
-    changePassword
   );
 }
 

@@ -1,5 +1,4 @@
-// @ts-ignore
-const pdf = require('pdf-parse');
+import pdf = require('pdf-parse');
 
 export interface ParsedInvoice {
   invoiceNumber: string | null;
@@ -22,7 +21,6 @@ export interface ParsedInvoice {
 }
 
 export class InvoiceParserService {
-
   /**
    * Main entry point to parse invoice from buffer
    * @param buffer File buffer
@@ -49,7 +47,9 @@ export class InvoiceParserService {
       return this.extractData(text);
     } catch (error) {
       console.error('Invoice Parse Error:', error);
-      throw new Error(`Failed to parse invoice: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to parse invoice: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -61,7 +61,6 @@ export class InvoiceParserService {
   private async parseImage(buffer: Buffer): Promise<string> {
     try {
       // Dynamic import to avoid crash if tesseract.js is not installed
-      // @ts-ignore
       const { createWorker } = await import('tesseract.js');
       const worker = await createWorker('eng');
       const ret = await worker.recognize(buffer);
@@ -69,7 +68,9 @@ export class InvoiceParserService {
       return ret.data.text;
     } catch (error) {
       console.error('OCR Error: tesseract.js might not be installed.', error);
-      throw new Error('OCR capability requires "tesseract.js". Please install it to support image parsing.');
+      throw new Error(
+        'OCR capability requires "tesseract.js". Please install it to support image parsing.'
+      );
     }
   }
 
@@ -87,14 +88,13 @@ export class InvoiceParserService {
       accountCode: null,
       paymentPin: null,
       breakdown: { principal: 0, tax: 0, fee: 0 },
-      rawText: text
+      rawText: text,
     };
 
     // 1. Invoice Number
     // Patterns: "Invoice #", "INV-", "Invoice Number:"
     const invMatch =
-      text.match(/Invoice\s*[:#]?\s*([A-Za-z0-9-]+)/i) ||
-      text.match(/(INV-[A-Z0-9-]+)/);
+      text.match(/Invoice\s*[:#]?\s*([A-Za-z0-9-]+)/i) || text.match(/(INV-[A-Z0-9-]+)/);
     if (invMatch && invMatch[1]) result.invoiceNumber = invMatch[1].trim();
 
     // 2. Amount (Total Due)

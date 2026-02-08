@@ -50,7 +50,7 @@ export class NotificationService {
 
     private static mapLogToNotification(log: any): Notification {
         let title = 'System Notification';
-        let message = log.details;
+        const message = log.details;
         let type = 'INFO';
 
         switch (log.action) {

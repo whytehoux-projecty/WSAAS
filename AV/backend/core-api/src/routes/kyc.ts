@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { KycService } from '../services';
-import { validationSchemas, HTTP_STATUS, ERROR_CODES } from '../../shared/index';
+import { validationSchemas, HTTP_STATUS, ERROR_CODES } from '@shared/index';
 
 /**
  * Get all KYC documents for a user

@@ -1,237 +1,19 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { PrismaClient } from '@prisma/client';
-import { TransactionService } from '../services/transactionService';
-import { ERROR_CODES, HTTP_STATUS } from '../../../shared/index';
 
 const prisma = new PrismaClient();
 
 // Validation schemas
 const transferSchema = z.object({
   fromAccountId: z.string(),
-  toAccountId: z.string().optional(),
-  toAccountNumber: z.string().optional(),
+  toAccountId: z.string(),
   amount: z.number().positive(),
   currency: z.string().default('USD'),
   description: z.string().min(1),
   reference: z.string().optional(),
   category: z.string().optional(),
-}).refine((data) => data.toAccountId || data.toAccountNumber, {
-  message: "Either toAccountId or toAccountNumber must be provided",
-  path: ["toAccountId"],
 });
-
-// Helper to handle service errors
-const handleServiceError = (error: any, reply: FastifyReply) => {
-  const message = error.message || 'An unexpected error occurred';
-
-  // Map service errors to HTTP status codes
-  if (message.includes('not found')) {
-    return reply.status(HTTP_STATUS.NOT_FOUND).send({
-      error: ERROR_CODES.RESOURCE_NOT_FOUND,
-      message
-    });
-  }
-
-  if (message.includes('Insufficient funds') || message.includes('limit exceeded')) {
-    return reply.status(HTTP_STATUS.BAD_REQUEST).send({
-      error: ERROR_CODES.INSUFFICIENT_FUNDS, // or DAILY_LIMIT_EXCEEDED based on message
-      message
-    });
-  }
-
-  if (message.includes('Minimum') || message.includes('Maximum')) {
-    return reply.status(HTTP_STATUS.BAD_REQUEST).send({
-      error: ERROR_CODES.VALUE_OUT_OF_RANGE,
-      message
-    });
-  }
-
-  // Default to 500
-  return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
-    error: ERROR_CODES.INTERNAL_SERVER_ERROR,
-    message
-  });
-};
-
-export const getTransactions = async (request: FastifyRequest, reply: FastifyReply) => {
-  try {
-    const user = request.user as any;
-    const {
-      page = 1,
-      limit = 20,
-      accountId,
-      type,
-      status,
-      startDate,
-      endDate,
-    } = request.query as any;
-
-    const queryOptions: any = {
-      page: Number(page),
-      limit: Number(limit),
-    };
-
-    // Filter undefined values because exactOptionalPropertyTypes is enabled
-    if (accountId) queryOptions.accountId = accountId;
-    if (type) queryOptions.type = type;
-    if (status) queryOptions.status = status;
-    if (startDate) queryOptions.startDate = new Date(startDate);
-    if (endDate) queryOptions.endDate = new Date(endDate);
-
-    const result = await TransactionService.getUserTransactions(user.userId, queryOptions);
-
-    reply.send(result);
-  } catch (error) {
-    handleServiceError(error, reply);
-  }
-};
-
-export const getTransaction = async (request: FastifyRequest, reply: FastifyReply) => {
-  try {
-    const user = request.user as any;
-    const { transactionId } = request.params as { transactionId: string };
-
-    const transaction = await TransactionService.getTransactionById(transactionId, user.userId);
-
-    reply.send({ transaction });
-  } catch (error) {
-    handleServiceError(error, reply);
-  }
-};
-
-export const createDeposit = async (request: FastifyRequest, reply: FastifyReply) => {
-  try {
-    const user = request.user as any;
-    const { accountId, amount, currency, description, reference } = request.body as any;
-
-    const transaction = await TransactionService.createDeposit(user.userId, {
-      accountId,
-      amount,
-      currency,
-      description,
-      reference
-    });
-
-    reply.status(HTTP_STATUS.CREATED).send({
-      message: 'Deposit completed successfully',
-      transaction,
-    });
-  } catch (error) {
-    handleServiceError(error, reply);
-  }
-};
-
-export const createWithdrawal = async (request: FastifyRequest, reply: FastifyReply) => {
-  try {
-    const user = request.user as any;
-    const { accountId, amount, currency, description, reference } = request.body as any;
-
-    const transaction = await TransactionService.createWithdrawal(user.userId, {
-      accountId,
-      amount,
-      currency,
-      description,
-      reference
-    });
-
-    reply.status(HTTP_STATUS.CREATED).send({
-      message: 'Withdrawal completed successfully',
-      transaction,
-    });
-  } catch (error) {
-    handleServiceError(error, reply);
-  }
-};
-
-export const createTransfer = async (request: FastifyRequest, reply: FastifyReply) => {
-  try {
-    const user = request.user as any;
-    const validatedData = transferSchema.parse(request.body);
-    const { fromAccountId, toAccountId, toAccountNumber, amount, currency, description, reference } = validatedData;
-
-    const transferPayload: any = {
-      fromAccountId,
-      toAccountId,
-      toAccountNumber,
-      amount,
-      description: description || 'Transfer',
-    };
-    if (currency) transferPayload.currency = currency;
-    if (reference) transferPayload.reference = reference;
-
-    const transactions = await TransactionService.createTransfer(user.userId, transferPayload);
-
-    reply.status(HTTP_STATUS.CREATED).send({
-      message: 'Transfer completed successfully',
-      transactions,
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
-        error: ERROR_CODES.VALIDATION_FAILED,
-        message: error.errors.map(e => e.message).join(', '),
-      });
-    }
-    handleServiceError(error, reply);
-  }
-};
-
-export const getTransactionStatistics = async (request: FastifyRequest, reply: FastifyReply) => {
-  try {
-    const user = request.user as any;
-    const { period = 'month' } = request.query as any;
-
-    const stats = await TransactionService.getTransactionStats(user.userId, period);
-
-    reply.send(stats);
-  } catch (error) {
-    handleServiceError(error, reply);
-  }
-};
-
-export const updateTransactionCategory = async (request: FastifyRequest, reply: FastifyReply) => {
-  try {
-    const user = request.user as any;
-    const { transactionId } = request.params as { transactionId: string };
-    const { category } = request.body as { category: string };
-
-    if (!category) {
-      return reply.status(HTTP_STATUS.BAD_REQUEST).send({
-        error: ERROR_CODES.VALIDATION_FAILED,
-        message: 'Category is required'
-      });
-    }
-
-    // Verify ownership
-    const transaction = await prisma.transaction.findFirst({
-      where: {
-        id: transactionId,
-        account: { userId: user.userId }
-      }
-    });
-
-    if (!transaction) {
-      return reply.status(HTTP_STATUS.NOT_FOUND).send({
-        error: ERROR_CODES.TRANSACTION_NOT_FOUND,
-        message: 'Transaction not found'
-      });
-    }
-
-    const updatedTransaction = await prisma.transaction.update({
-      where: { id: transactionId },
-      data: { category }
-    });
-
-    reply.send({ message: 'Category updated', transaction: updatedTransaction });
-  } catch (error) {
-    request.log.error(error);
-    reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
-      error: ERROR_CODES.INTERNAL_SERVER_ERROR,
-      message: 'Failed to update transaction category',
-    });
-  }
-};
 
 export default async function transactionRoutes(fastify: FastifyInstance) {
   // Get all transactions for user
@@ -255,8 +37,118 @@ export default async function transactionRoutes(fastify: FastifyInstance) {
             endDate: { type: 'string', format: 'date' },
           },
         },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              transactions: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    type: { type: 'string' },
+                    amount: { type: 'number' },
+                    currency: { type: 'string' },
+                    status: { type: 'string' },
+                    description: { type: 'string' },
+                    reference: { type: 'string' },
+                    createdAt: { type: 'string' },
+                    account: {
+                      type: 'object',
+                      properties: {
+                        accountNumber: { type: 'string' },
+                        accountType: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+              pagination: {
+                type: 'object',
+                properties: {
+                  page: { type: 'integer' },
+                  limit: { type: 'integer' },
+                  total: { type: 'integer' },
+                  pages: { type: 'integer' },
+                },
+              },
+            },
+          },
+        },
       },
-      handler: getTransactions
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const user = request.user as any;
+        const {
+          page = 1,
+          limit = 20,
+          accountId,
+          type,
+          status,
+          startDate,
+          endDate,
+        } = request.query as any;
+
+        // Get user's account IDs
+        const userAccounts = await prisma.account.findMany({
+          where: { userId: user.userId },
+          select: { id: true },
+        });
+
+        const accountIds = userAccounts.map((acc: any) => acc.id);
+
+        if (accountIds.length === 0) {
+          return reply.send({
+            transactions: [],
+            pagination: { page, limit, total: 0, pages: 0 },
+          });
+        }
+
+        const where: any = {
+          accountId: { in: accountId ? [accountId] : accountIds },
+        };
+
+        if (type) where.type = type;
+        if (status) where.status = status;
+        if (startDate || endDate) {
+          where.createdAt = {};
+          if (startDate) where.createdAt.gte = new Date(startDate);
+          if (endDate) where.createdAt.lte = new Date(endDate);
+        }
+
+        const [transactions, total] = await Promise.all([
+          prisma.transaction.findMany({
+            where,
+            include: {
+              account: {
+                select: {
+                  accountNumber: true,
+                  accountType: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: limit,
+          }),
+          prisma.transaction.count({ where }),
+        ]);
+
+        const pages = Math.ceil(total / limit);
+
+        reply.send({
+          transactions,
+          pagination: { page, limit, total, pages },
+        });
+      } catch (error) {
+        fastify.log.error('Get transactions error:', error);
+        reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to fetch transactions',
+        });
+      }
     }
   );
 
@@ -276,8 +168,73 @@ export default async function transactionRoutes(fastify: FastifyInstance) {
           },
           required: ['transactionId'],
         },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              transaction: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  type: { type: 'string' },
+                  amount: { type: 'number' },
+                  currency: { type: 'string' },
+                  status: { type: 'string' },
+                  description: { type: 'string' },
+                  reference: { type: 'string' },
+                  createdAt: { type: 'string' },
+                  updatedAt: { type: 'string' },
+                  account: {
+                    type: 'object',
+                    properties: {
+                      accountNumber: { type: 'string' },
+                      accountType: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
-      handler: getTransaction
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const user = request.user as any;
+        const { transactionId } = request.params as { transactionId: string };
+
+        const transaction = await prisma.transaction.findFirst({
+          where: {
+            id: transactionId,
+            account: {
+              userId: user.userId,
+            },
+          },
+          include: {
+            account: {
+              select: {
+                accountNumber: true,
+                accountType: true,
+              },
+            },
+          },
+        });
+
+        if (!transaction) {
+          return reply.status(404).send({
+            error: 'Transaction Not Found',
+            message: 'Transaction not found or access denied',
+          });
+        }
+
+        reply.send({ transaction });
+      } catch (error) {
+        fastify.log.error('Get transaction error:', error);
+        reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to fetch transaction',
+        });
+      }
     }
   );
 
@@ -301,8 +258,88 @@ export default async function transactionRoutes(fastify: FastifyInstance) {
             reference: { type: 'string' },
           },
         },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              message: { type: 'string' },
+              transaction: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  type: { type: 'string' },
+                  amount: { type: 'number' },
+                  currency: { type: 'string' },
+                  status: { type: 'string' },
+                  description: { type: 'string' },
+                  reference: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
       },
-      handler: createDeposit
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const user = request.user as any;
+        const { accountId, amount, currency = 'USD', description, reference } = request.body as any;
+
+        // Verify account ownership
+        const account = await prisma.account.findFirst({
+          where: {
+            id: accountId,
+            userId: user.userId,
+            status: 'ACTIVE',
+          },
+        });
+
+        if (!account) {
+          return reply.status(404).send({
+            error: 'Account Not Found',
+            message: 'Account not found, inactive, or access denied',
+          });
+        }
+
+        // Create transaction and update balance in a transaction
+        const result = await prisma.$transaction(async (tx: any) => {
+          // Create transaction record
+          const transaction = await tx.transaction.create({
+            data: {
+              accountId,
+              type: 'DEPOSIT',
+              amount,
+              currency,
+              status: 'COMPLETED',
+              description,
+              reference: reference || `DEP-${Date.now()}`,
+            },
+          });
+
+          // Update account balance
+          await tx.account.update({
+            where: { id: accountId },
+            data: {
+              balance: {
+                increment: amount,
+              },
+            },
+          });
+
+          return transaction;
+        });
+
+        reply.status(201).send({
+          message: 'Deposit completed successfully',
+          transaction: result,
+        });
+      } catch (error) {
+        fastify.log.error('Deposit error:', error);
+        reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to process deposit',
+        });
+      }
     }
   );
 
@@ -326,8 +363,115 @@ export default async function transactionRoutes(fastify: FastifyInstance) {
             reference: { type: 'string' },
           },
         },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              message: { type: 'string' },
+              transaction: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  type: { type: 'string' },
+                  amount: { type: 'number' },
+                  currency: { type: 'string' },
+                  status: { type: 'string' },
+                  description: { type: 'string' },
+                  reference: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
       },
-      handler: createWithdrawal
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const user = request.user as any;
+        const { accountId, amount, currency = 'USD', description, reference } = request.body as any;
+
+        // Verify account ownership and sufficient balance
+        const account = await prisma.account.findFirst({
+          where: {
+            id: accountId,
+            userId: user.userId,
+            status: 'ACTIVE',
+          },
+        });
+
+        if (!account) {
+          return reply.status(404).send({
+            error: 'Account Not Found',
+            message: 'Account not found, inactive, or access denied',
+          });
+        }
+
+        if (account.balance < amount) {
+          return reply.status(400).send({
+            error: 'Insufficient Funds',
+            message: 'Account balance is insufficient for this withdrawal',
+          });
+        }
+
+        // Check daily limit
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const todayWithdrawals = await prisma.transaction.aggregate({
+          where: {
+            accountId,
+            type: 'WITHDRAWAL',
+            status: 'COMPLETED',
+            createdAt: { gte: today },
+          },
+          _sum: { amount: true },
+        });
+
+        const todayTotal = (todayWithdrawals._sum.amount || 0) + amount;
+        if (todayTotal > account.dailyLimit) {
+          return reply.status(400).send({
+            error: 'Daily Limit Exceeded',
+            message: `Daily withdrawal limit of ${account.dailyLimit} ${currency} exceeded`,
+          });
+        }
+
+        // Create transaction and update balance
+        const result = await prisma.$transaction(async (tx: any) => {
+          const transaction = await tx.transaction.create({
+            data: {
+              accountId,
+              type: 'WITHDRAWAL',
+              amount,
+              currency,
+              status: 'COMPLETED',
+              description,
+              reference: reference || `WTH-${Date.now()}`,
+            },
+          });
+
+          await tx.account.update({
+            where: { id: accountId },
+            data: {
+              balance: {
+                decrement: amount,
+              },
+            },
+          });
+
+          return transaction;
+        });
+
+        reply.status(201).send({
+          message: 'Withdrawal completed successfully',
+          transaction: result,
+        });
+      } catch (error) {
+        fastify.log.error('Withdrawal error:', error);
+        reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to process withdrawal',
+        });
+      }
     }
   );
 
@@ -342,19 +486,155 @@ export default async function transactionRoutes(fastify: FastifyInstance) {
         security: [{ bearerAuth: [] }],
         body: {
           type: 'object',
-          required: ['fromAccountId', 'amount', 'description'],
+          required: ['fromAccountId', 'toAccountId', 'amount', 'description'],
           properties: {
             fromAccountId: { type: 'string' },
             toAccountId: { type: 'string' },
-            toAccountNumber: { type: 'string' },
             amount: { type: 'number', minimum: 0.01 },
             currency: { type: 'string', default: 'USD' },
             description: { type: 'string', minLength: 1 },
             reference: { type: 'string' },
           },
         },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              message: { type: 'string' },
+              transactions: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    type: { type: 'string' },
+                    amount: { type: 'number' },
+                    currency: { type: 'string' },
+                    status: { type: 'string' },
+                    description: { type: 'string' },
+                    reference: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
-      handler: createTransfer
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const user = request.user as any;
+        const validatedData = transferSchema.parse(request.body);
+        const { fromAccountId, toAccountId, amount, currency, description, reference } =
+          validatedData;
+
+        if (fromAccountId === toAccountId) {
+          return reply.status(400).send({
+            error: 'Invalid Transfer',
+            message: 'Cannot transfer to the same account',
+          });
+        }
+
+        // Verify source account ownership and balance
+        const fromAccount = await prisma.account.findFirst({
+          where: {
+            id: fromAccountId,
+            userId: user.userId,
+            status: 'ACTIVE',
+          },
+        });
+
+        if (!fromAccount) {
+          return reply.status(404).send({
+            error: 'Source Account Not Found',
+            message: 'Source account not found, inactive, or access denied',
+          });
+        }
+
+        if (Number(fromAccount.balance) < amount) {
+          return reply.status(400).send({
+            error: 'Insufficient Funds',
+            message: 'Source account balance is insufficient for this transfer',
+          });
+        }
+
+        // Verify destination account exists
+        const toAccount = await prisma.account.findFirst({
+          where: {
+            id: toAccountId,
+            status: 'ACTIVE',
+          },
+        });
+
+        if (!toAccount) {
+          return reply.status(404).send({
+            error: 'Destination Account Not Found',
+            message: 'Destination account not found or inactive',
+          });
+        }
+
+        const transferRef = reference || `TRF-${Date.now()}`;
+
+        // Create transfer transactions
+        const result = await prisma.$transaction(async (tx: any) => {
+          // Debit from source account
+          const debitTransaction = await tx.transaction.create({
+            data: {
+              accountId: fromAccountId,
+              type: 'TRANSFER',
+              amount: -amount, // Negative for debit
+              currency,
+              status: 'COMPLETED',
+              description: `Transfer to ${toAccount.accountNumber}: ${description}`,
+              reference: transferRef,
+            },
+          });
+
+          // Credit to destination account
+          const creditTransaction = await tx.transaction.create({
+            data: {
+              accountId: toAccountId,
+              type: 'TRANSFER',
+              amount: amount, // Positive for credit
+              currency,
+              status: 'COMPLETED',
+              description: `Transfer from ${fromAccount.accountNumber}: ${description}`,
+              reference: transferRef,
+            },
+          });
+
+          // Update account balances
+          await tx.account.update({
+            where: { id: fromAccountId },
+            data: { balance: { decrement: amount } },
+          });
+
+          await tx.account.update({
+            where: { id: toAccountId },
+            data: { balance: { increment: amount } },
+          });
+
+          return [debitTransaction, creditTransaction];
+        });
+
+        reply.status(201).send({
+          message: 'Transfer completed successfully',
+          transactions: result,
+        });
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return reply.status(400).send({
+            error: 'Validation Error',
+            message: error.errors.map(e => e.message).join(', '),
+          });
+        }
+
+        fastify.log.error('Transfer error:', error);
+        reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to process transfer',
+        });
+      }
     }
   );
 
@@ -373,17 +653,577 @@ export default async function transactionRoutes(fastify: FastifyInstance) {
             period: { type: 'string', enum: ['week', 'month', 'year'], default: 'month' },
           },
         },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              totalTransactions: { type: 'integer' },
+              totalAmount: { type: 'number' },
+              deposits: { type: 'number' },
+              withdrawals: { type: 'number' },
+              transfers: { type: 'number' },
+              byType: {
+                type: 'object',
+                properties: {
+                  DEPOSIT: { type: 'integer' },
+                  WITHDRAWAL: { type: 'integer' },
+                  TRANSFER: { type: 'integer' },
+                  PAYMENT: { type: 'integer' },
+                },
+              },
+            },
+          },
+        },
       },
-      handler: getTransactionStatistics
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const user = request.user as any;
+        const { period = 'month' } = request.query as any;
+
+        // Calculate date range
+        const now = new Date();
+        const startDate = new Date();
+
+        switch (period) {
+          case 'week':
+            startDate.setDate(now.getDate() - 7);
+            break;
+          case 'year':
+            startDate.setFullYear(now.getFullYear() - 1);
+            break;
+          default: // month
+            startDate.setMonth(now.getMonth() - 1);
+        }
+
+        // Get user's account IDs
+        const userAccounts = await prisma.account.findMany({
+          where: { userId: user.userId },
+          select: { id: true },
+        });
+
+        const accountIds = userAccounts.map((acc: any) => acc.id);
+
+        if (accountIds.length === 0) {
+          return reply.send({
+            totalTransactions: 0,
+            totalAmount: 0,
+            deposits: 0,
+            withdrawals: 0,
+            transfers: 0,
+            byType: { DEPOSIT: 0, WITHDRAWAL: 0, TRANSFER: 0, PAYMENT: 0 },
+          });
+        }
+
+        const where = {
+          accountId: { in: accountIds },
+          createdAt: { gte: startDate },
+          status: 'COMPLETED',
+        };
+
+        const [stats, typeStats] = await Promise.all([
+          prisma.transaction.aggregate({
+            where,
+            _count: { id: true },
+            _sum: { amount: true },
+          }),
+          prisma.transaction.groupBy({
+            by: ['type'],
+            where,
+            _count: { id: true },
+            _sum: { amount: true },
+          }),
+        ]);
+
+        const byType = { DEPOSIT: 0, WITHDRAWAL: 0, TRANSFER: 0, PAYMENT: 0 };
+        let deposits = 0,
+          withdrawals = 0,
+          transfers = 0;
+
+        typeStats.forEach((stat: any) => {
+          byType[stat.type as keyof typeof byType] = stat._count.id;
+          const amount = stat._sum.amount || 0;
+
+          switch (stat.type) {
+            case 'DEPOSIT':
+              deposits += amount;
+              break;
+            case 'WITHDRAWAL':
+              withdrawals += Math.abs(amount);
+              break;
+            case 'TRANSFER':
+              transfers += Math.abs(amount);
+              break;
+          }
+        });
+
+        reply.send({
+          totalTransactions: stats._count.id,
+          totalAmount: stats._sum.amount || 0,
+          deposits,
+          withdrawals,
+          transfers,
+          byType,
+        });
+      } catch (error) {
+        fastify.log.error('Get transaction stats error:', error);
+        reply.status(500).send({
+          error: 'Internal Server Error',
+          message: 'Failed to fetch transaction statistics',
+        });
+      }
     }
   );
-
-  // Update transaction category
-  fastify.patch(
-    '/:transactionId/category',
-    {
-      preHandler: [fastify.authenticate],
-    },
-    updateTransactionCategory
-  );
 }
+
+// Named exports for individual route handlers
+export const getTransactions = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const user = request.user as any;
+    const {
+      page = 1,
+      limit = 20,
+      accountId,
+      type,
+      status,
+      category,
+      startDate,
+      endDate,
+    } = request.query as any;
+
+    // Get user's account IDs
+    const userAccounts = await prisma.account.findMany({
+      where: { userId: user.userId },
+      select: { id: true },
+    });
+
+    const accountIds = userAccounts.map((acc: any) => acc.id);
+
+    if (accountIds.length === 0) {
+      return reply.send({
+        transactions: [],
+        pagination: { page, limit, total: 0, pages: 0 },
+      });
+    }
+
+    const where: any = {
+      accountId: { in: accountId ? [accountId] : accountIds },
+    };
+
+    if (type) where.type = type;
+    if (status) where.status = status;
+    if (category) where.category = category;
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: {
+          account: {
+            select: {
+              accountNumber: true,
+              accountType: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.transaction.count({ where }),
+    ]);
+
+    const pages = Math.ceil(total / limit);
+
+    reply.send({
+      transactions,
+      pagination: { page, limit, total, pages },
+    });
+  } catch (error) {
+    reply.status(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to fetch transactions',
+    });
+  }
+};
+
+export const getTransaction = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const user = request.user as any;
+    const { transactionId } = request.params as { transactionId: string };
+
+    const transaction = await prisma.transaction.findFirst({
+      where: {
+        id: transactionId,
+        account: { userId: user.userId },
+      },
+      include: {
+        account: {
+          select: {
+            accountNumber: true,
+            accountType: true,
+          },
+        },
+      },
+    });
+
+    if (!transaction) {
+      return reply.status(404).send({
+        error: 'Not Found',
+        message: 'Transaction not found',
+      });
+    }
+
+    reply.send({ transaction });
+  } catch (error) {
+    reply.status(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to fetch transaction',
+    });
+  }
+};
+
+export const createDeposit = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const user = request.user as any;
+    const { accountId, amount, description, category } = request.body as any;
+
+    // Verify account ownership
+    const account = await prisma.account.findFirst({
+      where: { id: accountId, userId: user.userId },
+    });
+
+    if (!account) {
+      return reply.status(404).send({
+        error: 'Not Found',
+        message: 'Account not found',
+      });
+    }
+
+    const transaction = await prisma.transaction.create({
+      data: {
+        accountId,
+        type: 'DEPOSIT',
+        amount,
+        currency: 'USD',
+        status: 'COMPLETED',
+        description,
+        category: category || 'DEPOSIT',
+        reference: `DEP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        processedAt: new Date(),
+      },
+    });
+
+    // Update account balance
+    await prisma.account.update({
+      where: { id: accountId },
+      data: { balance: { increment: amount } },
+    });
+
+    reply.status(201).send({
+      message: 'Deposit completed successfully',
+      transaction,
+    });
+  } catch (error) {
+    reply.status(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to process deposit',
+    });
+  }
+};
+
+export const createWithdrawal = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const user = request.user as any;
+    const { accountId, amount, description, category } = request.body as any;
+
+    // Verify account ownership and sufficient balance
+    const account = await prisma.account.findFirst({
+      where: { id: accountId, userId: user.userId },
+    });
+
+    if (!account) {
+      return reply.status(404).send({
+        error: 'Not Found',
+        message: 'Account not found',
+      });
+    }
+
+    if (account.balance < amount) {
+      return reply.status(400).send({
+        error: 'Insufficient Funds',
+        message: 'Account balance is insufficient for this withdrawal',
+      });
+    }
+
+    const transaction = await prisma.transaction.create({
+      data: {
+        accountId,
+        type: 'WITHDRAWAL',
+        amount: -amount, // Negative for withdrawal
+        currency: 'USD',
+        status: 'COMPLETED',
+        description,
+        category: category || 'WITHDRAWAL',
+        reference: `WTH-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        processedAt: new Date(),
+      },
+    });
+
+    // Update account balance
+    await prisma.account.update({
+      where: { id: accountId },
+      data: { balance: { decrement: amount } },
+    });
+
+    reply.status(201).send({
+      message: 'Withdrawal completed successfully',
+      transaction,
+    });
+  } catch (error) {
+    reply.status(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to process withdrawal',
+    });
+  }
+};
+
+export const createTransfer = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const user = request.user as any;
+    const transferData = transferSchema.parse(request.body);
+    const { fromAccountId, toAccountId, amount, description, category } = transferData;
+
+    // Verify source account ownership
+    const fromAccount = await prisma.account.findFirst({
+      where: { id: fromAccountId, userId: user.userId },
+    });
+
+    if (!fromAccount) {
+      return reply.status(404).send({
+        error: 'Not Found',
+        message: 'Source account not found',
+      });
+    }
+
+    // Verify destination account exists
+    const toAccount = await prisma.account.findUnique({
+      where: { id: toAccountId },
+    });
+
+    if (!toAccount) {
+      return reply.status(404).send({
+        error: 'Not Found',
+        message: 'Destination account not found',
+      });
+    }
+
+    // Check sufficient balance
+    if (Number(fromAccount.balance) < amount) {
+      return reply.status(400).send({
+        error: 'Insufficient Funds',
+        message: 'Source account balance is insufficient for this transfer',
+      });
+    }
+
+    // Create transfer transactions
+    const reference = `TRF-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const result = await prisma.$transaction(async tx => {
+      const debitTransaction = await tx.transaction.create({
+        data: {
+          accountId: fromAccountId,
+          type: 'TRANSFER',
+          amount: -amount,
+          currency: 'USD',
+          status: 'COMPLETED',
+          description: `Transfer to ${toAccount.accountNumber}: ${description}`,
+          category: category || 'TRANSFER',
+          reference,
+          processedAt: new Date(),
+        },
+      });
+
+      const creditTransaction = await tx.transaction.create({
+        data: {
+          accountId: toAccountId,
+          type: 'TRANSFER',
+          amount: amount,
+          currency: 'USD',
+          status: 'COMPLETED',
+          description: `Transfer from ${fromAccount.accountNumber}: ${description}`,
+          category: category || 'TRANSFER',
+          reference,
+          processedAt: new Date(),
+        },
+      });
+
+      // Update account balances
+      await tx.account.update({
+        where: { id: fromAccountId },
+        data: { balance: { decrement: amount } },
+      });
+
+      await tx.account.update({
+        where: { id: toAccountId },
+        data: { balance: { increment: amount } },
+      });
+
+      return [debitTransaction, creditTransaction];
+    });
+
+    reply.status(201).send({
+      message: 'Transfer completed successfully',
+      transactions: result,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return reply.status(400).send({
+        error: 'Validation Error',
+        message: error.errors.map(e => e.message).join(', '),
+      });
+    }
+
+    reply.status(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to process transfer',
+    });
+  }
+};
+
+export const getTransactionStatistics = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const user = request.user as any;
+    const { period = 'month' } = request.query as any;
+
+    // Calculate date range
+    const now = new Date();
+    const startDate = new Date();
+
+    switch (period) {
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default: // month
+        startDate.setMonth(now.getMonth() - 1);
+    }
+
+    // Get user's account IDs
+    const userAccounts = await prisma.account.findMany({
+      where: { userId: user.userId },
+      select: { id: true },
+    });
+
+    const accountIds = userAccounts.map((acc: any) => acc.id);
+
+    if (accountIds.length === 0) {
+      return reply.send({
+        totalTransactions: 0,
+        totalAmount: 0,
+        deposits: 0,
+        withdrawals: 0,
+        transfers: 0,
+        byType: { DEPOSIT: 0, WITHDRAWAL: 0, TRANSFER: 0, PAYMENT: 0 },
+      });
+    }
+
+    const where = {
+      accountId: { in: accountIds },
+      createdAt: { gte: startDate },
+      status: 'COMPLETED',
+    };
+
+    const [stats, typeStats] = await Promise.all([
+      prisma.transaction.aggregate({
+        where,
+        _count: { id: true },
+        _sum: { amount: true },
+      }),
+      prisma.transaction.groupBy({
+        by: ['type'],
+        where,
+        _count: { id: true },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const byType = { DEPOSIT: 0, WITHDRAWAL: 0, TRANSFER: 0, PAYMENT: 0 };
+    let deposits = 0,
+      withdrawals = 0,
+      transfers = 0;
+
+    typeStats.forEach((stat: any) => {
+      byType[stat.type as keyof typeof byType] = stat._count.id;
+      const amount = stat._sum.amount || 0;
+
+      switch (stat.type) {
+        case 'DEPOSIT':
+          deposits += amount;
+          break;
+        case 'WITHDRAWAL':
+          withdrawals += Math.abs(amount);
+          break;
+        case 'TRANSFER':
+          transfers += Math.abs(amount);
+          break;
+      }
+    });
+
+    reply.send({
+      totalTransactions: stats._count.id,
+      totalAmount: stats._sum.amount || 0,
+      deposits,
+      withdrawals,
+      transfers,
+      byType,
+    });
+  } catch (error) {
+    reply.status(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to fetch transaction statistics',
+    });
+  }
+};
+
+export const updateTransactionCategory = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const user = request.user as any;
+    const { transactionId } = request.params as { transactionId: string };
+    const { category } = request.body as { category: string };
+
+    if (!category) {
+      return reply.status(400).send({ error: 'Validation Error', message: 'Category is required' });
+    }
+
+    // Verify ownership
+    const transaction = await prisma.transaction.findFirst({
+      where: {
+        id: transactionId,
+        account: { userId: user.userId }
+      }
+    });
+
+    if (!transaction) {
+      return reply.status(404).send({ error: 'Not Found', message: 'Transaction not found' });
+    }
+
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: transactionId },
+      data: { category }
+    });
+
+    reply.send({ message: 'Category updated', transaction: updatedTransaction });
+  } catch (error) {
+    reply.status(500).send({
+      error: 'Internal Server Error',
+      message: 'Failed to update transaction category',
+    });
+  }
+};

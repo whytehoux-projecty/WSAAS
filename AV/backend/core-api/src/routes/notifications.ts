@@ -87,7 +87,7 @@ export default async function notificationRoutes(fastify: FastifyInstance) {
                 };
             });
 
-            return { data: notifications };
+            reply.send({ data: notifications });
         }
     );
 }

@@ -1,10 +1,10 @@
-# AURUM VAULT Backend Services
+# NovaBank Backend Services
 
-A comprehensive banking platform backend built with modern technologies and best practices. This backend powers the AURUM VAULT digital banking experience with robust APIs, admin interfaces, and shared utilities.
+A comprehensive banking platform backend built with modern technologies and best practices. This backend powers the NovaBank digital banking experience with robust APIs, admin interfaces, and shared utilities.
 
 ## 🏗️ Architecture Overview
 
-The AURUM VAULT backend follows a microservices-inspired architecture with clear separation of concerns:
+The NovaBank backend follows a microservices-inspired architecture with clear separation of concerns:
 
 ```
 backend/
@@ -142,16 +142,15 @@ Ensure you have the following installed:
 
    ```env
    # Database Configuration
-   DATABASE_URL="postgresql://username:password@localhost:5432/aurumvault"
-
+   DATABASE_URL="postgresql://username:password@localhost:5432/novabank"
    
    # JWT Configuration
    JWT_SECRET="your-super-secret-jwt-key-change-in-production"
    JWT_EXPIRES_IN="24h"
    
    # Server Configuration
-   CORE_API_PORT=3001
-   ADMIN_API_PORT=3003
+   CORE_API_PORT=3000
+   ADMIN_API_PORT=3001
    NODE_ENV=development
    
    # Security
@@ -160,7 +159,7 @@ Ensure you have the following installed:
    RATE_LIMIT_WINDOW=900000
    
    # CORS
-   CORS_ORIGIN="http://localhost:4000"
+   CORS_ORIGIN="http://localhost:3000"
    
    # Optional: Redis for caching
    REDIS_URL="redis://localhost:6379"
@@ -207,10 +206,10 @@ Ensure you have the following installed:
 Start all services in development mode:
 
 ```bash
-# Start Core API (Port 3001)
+# Start Core API (Port 3000)
 cd core-api && npm run dev &
 
-# Start Admin Interface (Port 3003)
+# Start Admin Interface (Port 3001)
 cd admin-interface && npm run dev &
 
 # Or use the root package.json scripts
@@ -406,7 +405,7 @@ docker-compose up -d
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | Required |
 | `JWT_SECRET` | JWT signing secret | Required |
-| `PORT` | Server port | `3001` |
+| `PORT` | Server port | `3000` |
 | `NODE_ENV` | Environment mode | `development` |
 | `BCRYPT_ROUNDS` | Password hashing rounds | `12` |
 
@@ -414,8 +413,8 @@ docker-compose up -d
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | Admin server port | `3003` |
-| `CORS_ORIGIN` | Allowed CORS origin | `http://localhost:4000` |
+| `PORT` | Admin server port | `3001` |
+| `CORS_ORIGIN` | Allowed CORS origin | `http://localhost:3000` |
 | `RATE_LIMIT_MAX` | Max requests per window | `100` |
 | `COOKIE_SECRET` | Cookie signing secret | Required |
 
@@ -459,4 +458,4 @@ For support and questions:
 
 ---
 
-**AURUM VAULT Backend** - Powering the future of digital banking with luxury, security, and excellence.
+**NovaBank Backend** - Powering the future of digital banking with security, scalability, and excellence.

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { ERROR_CODES, WIRE_TRANSFER_CONFIG } from '../../shared/index';
+import { ERROR_CODES, WIRE_TRANSFER_CONFIG } from '@shared/index';
 import crypto from 'crypto';
 
 const prisma = new PrismaClient();

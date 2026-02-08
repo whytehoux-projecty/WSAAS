@@ -108,7 +108,7 @@ class DatabaseManager {
     database: 'connected' | 'disconnected';
     cache: 'connected' | 'disconnected';
   }> {
-    let result: { database: 'connected' | 'disconnected'; cache: 'connected' | 'disconnected' } = {
+    const result: { database: 'connected' | 'disconnected'; cache: 'connected' | 'disconnected' } = {
       database: 'disconnected',
       cache: 'disconnected',
     };

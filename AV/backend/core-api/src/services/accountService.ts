@@ -1,129 +1,9 @@
 import { PrismaClient } from '@prisma/client';
-import { ACCOUNT_CONFIG, BUSINESS_RULES, ERROR_CODES } from '../../shared/index';
-import { cache, CacheKeys, CacheTTL } from './cacheService';
+import { ACCOUNT_CONFIG, BUSINESS_RULES, ERROR_CODES } from '@shared/index';
 
 const prisma = new PrismaClient();
 
 export class AccountService {
-  /**
-   * Get account transactions with pagination
-   */
-  static async getAccountTransactions(
-    accountId: string,
-    userId: string,
-    filters: {
-      page?: number;
-      limit?: number;
-      type?: string;
-      status?: string;
-    }
-  ) {
-    // Verify account ownership
-    const account = await prisma.account.findFirst({
-      where: { id: accountId, userId },
-    });
-
-    if (!account) {
-      throw new Error(ERROR_CODES.ACCOUNT_NOT_FOUND);
-    }
-
-    const { page = 1, limit = 20, type, status } = filters;
-    const where: any = { accountId };
-
-    if (type) where.type = type;
-    if (status) where.status = status;
-
-    const [transactions, total] = await Promise.all([
-      prisma.transaction.findMany({
-        where,
-        select: {
-          id: true,
-          type: true,
-          amount: true,
-          currency: true,
-          status: true,
-          description: true,
-          reference: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.transaction.count({ where }),
-    ]);
-
-    return {
-      transactions,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    };
-  }
-
-  /**
-   * Get account balance details including pending transactions
-   */
-  static async getAccountBalance(accountId: string, userId: string) {
-    // Try to get from cache first
-    const cacheKey = CacheKeys.accountBalance(accountId);
-    const cached = await cache.get<{
-      balance: number;
-      currency: string;
-      availableBalance: number;
-      pendingTransactions: number;
-    }>(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
-    // Fetch from database
-    const account = await prisma.account.findFirst({
-      where: { id: accountId, userId },
-      select: {
-        balance: true,
-        currency: true,
-      },
-    });
-
-    if (!account) {
-      throw new Error(ERROR_CODES.ACCOUNT_NOT_FOUND);
-    }
-
-    // Calculate pending transactions
-    const pendingTransactions = await prisma.transaction.aggregate({
-      where: {
-        accountId,
-        status: 'PENDING',
-      },
-      _sum: {
-        amount: true,
-      },
-    });
-
-    const pendingAmount = pendingTransactions._sum.amount ? Number(pendingTransactions._sum.amount) : 0;
-    const balance = typeof account.balance === 'object' && 'toNumber' in account.balance
-      ? (account.balance as any).toNumber()
-      : Number(account.balance);
-    const availableBalance = balance - pendingAmount;
-
-    const result = {
-      balance,
-      currency: account.currency,
-      availableBalance,
-      pendingTransactions: pendingAmount,
-    };
-
-    // Cache for 1 minute (balance changes frequently)
-    await cache.set(cacheKey, result, CacheTTL.SHORT);
-
-    return result;
-  }
-
   /**
    * Create a new account for a user
    */
@@ -474,26 +354,26 @@ export class AccountService {
           (typeof account.dailyLimit === 'object' && 'toNumber' in account.dailyLimit
             ? account.dailyLimit.toNumber()
             : Number(account.dailyLimit)) -
-          Math.abs(
-            todaySpending._sum.amount &&
-              typeof todaySpending._sum.amount === 'object' &&
-              'toNumber' in todaySpending._sum.amount
-              ? todaySpending._sum.amount.toNumber()
-              : Number(todaySpending._sum.amount || 0)
-          )
+            Math.abs(
+              todaySpending._sum.amount &&
+                typeof todaySpending._sum.amount === 'object' &&
+                'toNumber' in todaySpending._sum.amount
+                ? todaySpending._sum.amount.toNumber()
+                : Number(todaySpending._sum.amount || 0)
+            )
         ),
         monthlyRemaining: Math.max(
           0,
           (typeof account.monthlyLimit === 'object' && 'toNumber' in account.monthlyLimit
             ? account.monthlyLimit.toNumber()
             : Number(account.monthlyLimit)) -
-          Math.abs(
-            monthlySpending._sum.amount &&
-              typeof monthlySpending._sum.amount === 'object' &&
-              'toNumber' in monthlySpending._sum.amount
-              ? monthlySpending._sum.amount.toNumber()
-              : Number(monthlySpending._sum.amount || 0)
-          )
+            Math.abs(
+              monthlySpending._sum.amount &&
+                typeof monthlySpending._sum.amount === 'object' &&
+                'toNumber' in monthlySpending._sum.amount
+                ? monthlySpending._sum.amount.toNumber()
+                : Number(monthlySpending._sum.amount || 0)
+            )
         ),
       },
     };

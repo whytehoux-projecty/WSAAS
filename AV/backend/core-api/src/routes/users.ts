@@ -1,44 +1,10 @@
 import { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { validationSchemas, HTTP_STATUS, ERROR_CODES } from '../../../shared/index';
-import { UserService } from '../services/userService';
+import { PrismaClient } from '@prisma/client';
+import { validationSchemas, HTTP_STATUS, ERROR_CODES } from '@shared/index';
+import bcrypt from 'bcryptjs';
 
-// Helper to handle service errors
-const handleServiceError = (error: any, reply: FastifyReply) => {
-  const message = error.message || 'An unexpected error occurred';
-  console.log('Error Message:', message);
-  console.log('Expected Code:', ERROR_CODES.USER_NOT_FOUND);
-
-  if (message === ERROR_CODES.USER_NOT_FOUND || message.includes('not found')) {
-    return reply.status(HTTP_STATUS.NOT_FOUND).send({
-      success: false,
-      error: ERROR_CODES.RESOURCE_NOT_FOUND,
-      message: 'User not found'
-    });
-  }
-
-  if (message === ERROR_CODES.USER_ALREADY_EXISTS) {
-    return reply.status(HTTP_STATUS.CONFLICT).send({
-      success: false,
-      error: ERROR_CODES.USER_ALREADY_EXISTS,
-      message: 'User already exists'
-    });
-  }
-
-  if (message === ERROR_CODES.INVALID_CREDENTIALS) {
-    return reply.status(HTTP_STATUS.UNAUTHORIZED).send({
-      success: false,
-      error: ERROR_CODES.INVALID_CREDENTIALS,
-      message: 'Invalid credentials'
-    });
-  }
-
-  return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
-    success: false,
-    error: ERROR_CODES.INTERNAL_SERVER_ERROR,
-    message
-  });
-};
+const prisma = new PrismaClient();
 
 /**
  * Get all users with pagination and filtering
@@ -47,20 +13,62 @@ export const getUsers = async (request: FastifyRequest, reply: FastifyReply) => 
   try {
     const query = validationSchemas.userQuery.parse(request.query);
 
-    const filterOptions: any = {
-      page: query.page,
-      limit: query.limit
-    };
-    if (query.status) filterOptions.status = query.status;
-    if (query.kycStatus) filterOptions.kycStatus = query.kycStatus;
-    if (query.search) filterOptions.search = query.search;
+    const where: any = {};
 
-    const result = await UserService.getUsers(filterOptions);
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.kycStatus) {
+      where.kycStatus = query.kycStatus;
+    }
+
+    if (query.search) {
+      where.OR = [
+        { firstName: { contains: query.search, mode: 'insensitive' } },
+        { lastName: { contains: query.search, mode: 'insensitive' } },
+        { email: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+        orderBy: {
+          [query.sortBy || 'createdAt']: query.sortOrder,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          status: true,
+          kycStatus: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              accounts: true,
+              kycDocuments: true,
+            },
+          },
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
 
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
-      data: result.users,
-      pagination: result.pagination,
+      data: users,
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total,
+        pages: Math.ceil(total / query.limit),
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -88,14 +96,56 @@ export const getUserById = async (request: FastifyRequest, reply: FastifyReply) 
   try {
     const { id } = request.params as { id: string };
 
-    const user = await UserService.getUserById(id);
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        accounts: {
+          select: {
+            id: true,
+            accountNumber: true,
+            accountType: true,
+            balance: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+        kycDocuments: {
+          select: {
+            id: true,
+            documentType: true,
+            verificationStatus: true,
+            createdAt: true,
+            verifiedAt: true,
+          },
+        },
+        _count: {
+          select: {
+            accounts: true,
+            kycDocuments: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return reply.status(HTTP_STATUS.NOT_FOUND).send({
+        success: false,
+        error: ERROR_CODES.ACCOUNT_NOT_FOUND,
+        message: 'User not found',
+      });
+    }
 
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
       data: user,
     });
   } catch (error) {
-    handleServiceError(error, reply);
+    request.log.error(error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: ERROR_CODES.INTERNAL_SERVER_ERROR,
+      message: 'Failed to fetch user',
+    });
   }
 };
 
@@ -109,14 +159,38 @@ export const createUser = async (request: FastifyRequest, reply: FastifyReply) =
   try {
     const userData = validationSchemas.adminCreateUser.parse(request.body);
 
-    const user = await UserService.createUser({
-      email: userData.email,
-      password: userData.password,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      phone: userData.phone,
-      dateOfBirth: new Date(userData.dateOfBirth),
-      address: userData.address
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: userData.email },
+    });
+
+    if (existingUser) {
+      return reply.status(HTTP_STATUS.CONFLICT).send({
+        success: false,
+        error: ERROR_CODES.VALIDATION_FAILED,
+        message: 'User with this email already exists',
+      });
+    }
+
+    const { address, ...rest } = userData as any;
+    const hashedPassword = await bcrypt.hash(rest.password, 12);
+
+    const user = await prisma.user.create({
+      data: {
+        ...rest,
+        password: hashedPassword,
+        ...(address ? { address: { create: address } } : {}),
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        status: true,
+        kycStatus: true,
+        createdAt: true,
+      },
     });
 
     return reply.status(HTTP_STATUS.CREATED).send({
@@ -132,7 +206,13 @@ export const createUser = async (request: FastifyRequest, reply: FastifyReply) =
         details: error.errors,
       });
     }
-    handleServiceError(error, reply);
+
+    request.log.error(error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: ERROR_CODES.INTERNAL_SERVER_ERROR,
+      message: 'Failed to create user',
+    });
   }
 };
 
@@ -142,16 +222,27 @@ export const createUser = async (request: FastifyRequest, reply: FastifyReply) =
 export const updateUser = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { id } = request.params as { id: string };
-    const updateData = validationSchemas.updateUser.parse(request.body);
+    const updateData = validationSchemas.updateUser.parse(request.body) as any;
 
     const { address, ...rest } = updateData;
-    const cleanUpdateData: any = { ...rest };
-    if (address) cleanUpdateData.address = address;
 
-    // Remove undefined keys to satisfy exactOptionalPropertyTypes
-    Object.keys(cleanUpdateData).forEach(key => cleanUpdateData[key] === undefined && delete cleanUpdateData[key]);
-
-    const user = await UserService.updateUserProfile(id, cleanUpdateData);
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(address ? { address: { upsert: { create: address, update: address } } } : {}),
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        status: true,
+        kycStatus: true,
+        updatedAt: true,
+      },
+    });
 
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
@@ -166,7 +257,13 @@ export const updateUser = async (request: FastifyRequest, reply: FastifyReply) =
         details: error.errors,
       });
     }
-    handleServiceError(error, reply);
+
+    request.log.error(error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: ERROR_CODES.INTERNAL_SERVER_ERROR,
+      message: 'Failed to update user',
+    });
   }
 };
 
@@ -176,10 +273,31 @@ export const updateUser = async (request: FastifyRequest, reply: FastifyReply) =
 export const suspendUser = async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { id } = request.params as { id: string };
-    // Optionally extract reason from body if needed, but schema not visible here
-    // const { reason } = request.body as { reason?: string };
 
-    const user = await UserService.suspendUser(id);
+    const user = await prisma.user.update({
+      where: { id },
+      data: { status: 'SUSPENDED' },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        status: true,
+      },
+    });
+
+    // Log audit event
+    await prisma.auditLog.create({
+      data: {
+        userId: id,
+        action: 'USER_SUSPENDED',
+        entityType: 'USER',
+        entityId: id,
+        details: JSON.stringify({ suspendedBy: 'admin' }), // Should include actual admin ID
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'] || '',
+      },
+    });
 
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
@@ -187,7 +305,12 @@ export const suspendUser = async (request: FastifyRequest, reply: FastifyReply) 
       message: 'User suspended successfully',
     });
   } catch (error) {
-    handleServiceError(error, reply);
+    request.log.error(error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: ERROR_CODES.INTERNAL_SERVER_ERROR,
+      message: 'Failed to suspend user',
+    });
   }
 };
 
@@ -198,7 +321,30 @@ export const activateUser = async (request: FastifyRequest, reply: FastifyReply)
   try {
     const { id } = request.params as { id: string };
 
-    const user = await UserService.reactivateUser(id);
+    const user = await prisma.user.update({
+      where: { id },
+      data: { status: 'ACTIVE' },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        status: true,
+      },
+    });
+
+    // Log audit event
+    await prisma.auditLog.create({
+      data: {
+        userId: id,
+        action: 'USER_ACTIVATED',
+        entityType: 'USER',
+        entityId: id,
+        details: JSON.stringify({ activatedBy: 'admin' }), // Should include actual admin ID
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'] || '',
+      },
+    });
 
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
@@ -206,7 +352,12 @@ export const activateUser = async (request: FastifyRequest, reply: FastifyReply)
       message: 'User activated successfully',
     });
   } catch (error) {
-    handleServiceError(error, reply);
+    request.log.error(error);
+    return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
+      success: false,
+      error: ERROR_CODES.INTERNAL_SERVER_ERROR,
+      message: 'Failed to activate user',
+    });
   }
 };
 
@@ -214,47 +365,39 @@ export const activateUser = async (request: FastifyRequest, reply: FastifyReply)
  * Get user statistics
  */
 export const getUserStatistics = async (request: FastifyRequest, reply: FastifyReply) => {
-  // Keeping inline logic as UserService does not seem to have a getStatistics method matching this specific logic
-  // Update: UserService does NOT have getStatistics.
-  // We retain original logic here or move it to a new service method in a future turn.
-  // Original logic used prisma directly.
-
-  // Re-importing prisma for this method only is messy if we removed top-level import.
-  // Let's rely on UserService or throw "Not Implemented" and RECOMMEND adding it?
-  // No, I shouldn't break features.
-  // I will skip refactoring this specific method or see if I can implement it by calling getUsers multiple times? No that's inefficient.
-  // I will check if I can just use prisma here. I'll need to instantiate PrismaClient.
-
-  // To avoid instantiating PrismaClient just for this, I'll recommend adding getStatistics to UserService later.
-  // For now, I will include the Prisma client instantiation LOCALLY for this method if I really have to, 
-  // OR I'll assume common pattern:
-
-  // Wait, I can't import PrismaClient safely if I want to delegate everything to Service.
-  // I'll leave the original logic which uses `prisma`. So I need `prisma` in imports.
-
-  // Wait, I removed `const prisma = ...` in the code above (intended).
-  // I should add `const prisma = new PrismaClient()` back if I keep this method.
-  // But wait, creating multiple PrismaClients is bad.
-  // It's better to add `getStatistics` to `UserService` in the NEXT turn.
-  // For now, I will mark this as "To be Refactored" or try to Implement basic stats logic if possible using Service?
-  // `UserService.getUsers` gives total count.
-  // `UserService.getUsers({ status: 'ACTIVE' })` gives active count.
-  // `UserService.getUsers({ status: 'SUSPENDED' })` gives suspended count.
-  // The original method did exactly this (count queries).
-  // So I can replicate logic using `UserService.getUsers` paginated (limit=1) to get totals!
-  // `getUsers` returns total.
-
   try {
     const query = validationSchemas.statisticsQuery.parse(request.query);
-    const statsFilters: any = {};
-    if (query.startDate) statsFilters.startDate = new Date(query.startDate);
-    if (query.endDate) statsFilters.endDate = new Date(query.endDate);
 
-    const stats = await UserService.getUserStatistics(statsFilters);
+    const dateFilter: any = {};
+    if (query.startDate) {
+      dateFilter.gte = new Date(query.startDate);
+    }
+    if (query.endDate) {
+      dateFilter.lte = new Date(query.endDate);
+    }
+
+    const [totalUsers, activeUsers, suspendedUsers, pendingVerification, newUsersCount] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { status: 'ACTIVE' } }),
+        prisma.user.count({ where: { status: 'SUSPENDED' } }),
+        prisma.user.count({ where: { status: 'PENDING_VERIFICATION' } }),
+        prisma.user.count({
+          where: {
+            createdAt: dateFilter,
+          },
+        }),
+      ]);
 
     return reply.status(HTTP_STATUS.OK).send({
       success: true,
-      data: stats,
+      data: {
+        totalUsers,
+        activeUsers,
+        suspendedUsers,
+        pendingVerification,
+        newUsers: newUsersCount,
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -275,13 +418,7 @@ export const getUserStatistics = async (request: FastifyRequest, reply: FastifyR
   }
 };
 
-// ... Wait, disabling statistics is bad.
-// I will just add `const prisma = new PrismaClient()` at the top.
-// And keep the `getUserStatistics` original logic.
-
-// Actually I'll rewrite the ReplacementContent to include `const prisma` and the original `getUserStatistics` logic.
-// This is safer.
-
+// Default export function to register routes
 export default async function userRoutes(fastify: FastifyInstance) {
   // Get all users (admin only)
   fastify.get('/', {
@@ -316,7 +453,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Activate user (admin only)
   fastify.post('/:id/activate', {
     preHandler: [fastify.authenticate],
-    handler: activateUser, // Note: This calls UserService.reactivateUser which sets status to ACTIVE
+    handler: activateUser,
   });
 
   // Get user statistics (admin only)

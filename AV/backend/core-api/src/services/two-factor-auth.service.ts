@@ -138,6 +138,7 @@ export class TwoFactorAuthService {
      * Disable 2FA for user
      */
     async disableTwoFactor(userId: string, password: string): Promise<boolean> {
+        void password;
         // Verify password before disabling
         const user = await prisma.user.findUnique({
             where: { id: userId },

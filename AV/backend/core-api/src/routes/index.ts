@@ -13,7 +13,6 @@ import * as cardRoutes from './cards';
 import billRoutes from './bills';
 import loanRoutes from './loans';
 import systemRoutes from './system';
-import notificationRoutes from './notifications';
 import { authenticateToken, requireKYCVerified, requireActiveAccount } from '../middleware/auth';
 
 export default async function routes(fastify: FastifyInstance) {
@@ -102,9 +101,6 @@ export default async function routes(fastify: FastifyInstance) {
     fastify.get('/kyc/documents/:documentId', kycRoutes.getKYCDocument);
     fastify.delete('/kyc/documents/:documentId', kycRoutes.deleteKYCDocument);
     fastify.get('/kyc/status', kycRoutes.getKYCStatus);
-
-    // Notification routes
-    fastify.register(notificationRoutes, { prefix: '/notifications' });
 
     // Wire transfer routes (require KYC verification)
     fastify.register(async function (fastify) {

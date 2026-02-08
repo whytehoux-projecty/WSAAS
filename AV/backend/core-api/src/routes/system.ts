@@ -19,7 +19,7 @@ export default async function systemRoutes(fastify: FastifyInstance) {
 
       // Check Redis connection (if available)
       let redisStatus = 'not_configured';
-      let redisResponseTime = 0;
+      const redisResponseTime = 0;
 
       try {
         if (process.env['REDIS_URL']) {
