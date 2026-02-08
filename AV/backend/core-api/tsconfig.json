@@ -2,7 +2,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "commonjs",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
@@ -28,8 +30,12 @@
     "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../shared/*"],
-      "@/*": ["./src/*"]
+      "@shared/*": [
+        "../shared/*"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
   "include": [
