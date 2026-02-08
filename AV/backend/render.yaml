@@ -3,7 +3,7 @@ services:
     name: aurum-vault-api
     env: node
     plan: free
-    rootDir: backend/core-api
+    rootDir: AV/backend/core-api
     buildCommand: npm install && npm run build
     startCommand: npm run start:prod
     envVars:
