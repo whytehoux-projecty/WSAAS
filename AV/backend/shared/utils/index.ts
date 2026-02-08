@@ -417,7 +417,7 @@ export const queryStringToObject = (
   const params = new URLSearchParams(queryString);
   const obj: Record<string, string> = {};
 
-  params.forEach((value, key) => {
+  params.forEach((value: string, key: string) => {
     obj[key] = value;
   });
 
