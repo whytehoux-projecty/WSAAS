@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: aurum-vault-api
+    env: node
+    plan: free
+    rootDir: backend/core-api
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
