@@ -160,6 +160,18 @@ export default function LoginPage() {
         <div className="relative z-30">
           {/* Explicitly sized container: 320px x auto - Sharper edges (rounded-sm) */}
           <div className="w-[320px] h-auto bg-[#F1F8F5]/75 backdrop-blur-md shadow-2xl rounded-sm p-6 border border-[#1E4B35]/10 flex flex-col justify-center">
+            {/* Vault Logo */}
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/images/vault_1.png"
+                alt="Vault"
+                width={120}
+                height={40}
+                className="object-contain"
+                priority
+              />
+            </div>
+
             {/* General Error Message */}
             {errors.general && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-sm mb-4">
