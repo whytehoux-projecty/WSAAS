@@ -44,9 +44,9 @@ const config: Config = {
         },
         // Preserve original Vintage tokens
         'vintage-green': {
-          DEFAULT: '#7D9B7B',
-          light: '#8B9D83',
-          dark: '#6B8569',
+          DEFAULT: '#1E4B35',
+          light: '#2E5C45',
+          dark: '#143D2A',
         },
         'faded-gray': {
           DEFAULT: '#9CA3AF',

@@ -1,21 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 @config "../tailwind.config.ts";
 
 @layer base {
   :root {
     /* Core Vintage Palette References */
-    --vintage-green: #7D9B7B;
-    --vintage-green-light: #8B9D83;
-    --vintage-green-dark: #6B8569;
-    --soft-gold: #D4AF7A;
-    --soft-gold-dark: #B8941F;
-    --charcoal: #3D3D3D;
-    --charcoal-light: #5A5A5A;
-    --off-white: #FAF9F6;
-    --warm-cream: #F5F1E8;
-    --parchment: #F9F7F4;
-    --faded-gray: #9CA3AF;
+    --vintage-green: #1e4b35;
+    --vintage-green-light: #2e5c45;
+    --vintage-green-dark: #143d2a;
+    --soft-gold: #d4af7a;
+    --soft-gold-dark: #b8941f;
+    --charcoal: #3d3d3d;
+    --charcoal-light: #5a5a5a;
+    --off-white: #faf9f6;
+    --warm-cream: #f5f1e8;
+    --parchment: #f9f7f4;
+    --faded-gray: #9ca3af;
 
     /* Semantic Shadcn Variables (Light Mode) */
     --background: 0 0% 98%;
@@ -29,7 +29,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 24%;
 
-    --primary: 116 14% 55%;
+    --primary: 151 43% 21%;
     /* vintage-green converted to HSL */
     --primary-foreground: 0 0% 98%;
 
@@ -42,7 +42,7 @@
     --muted-foreground: 0 0% 45%;
 
     --accent: 36 14% 97%;
-    --accent-foreground: 116 14% 35%;
+    --accent-foreground: 151 43% 21%;
     /* darker vintage green */
 
     --destructive: 0 84.2% 60.2%;
@@ -50,14 +50,14 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 116 14% 55%;
+    --ring: 151 43% 21%;
 
-    --radius: 0.75rem;
+    --radius: 0px;
 
     /* Typography Defaults */
-    --font-heading: 'Playfair Display', serif;
-    --font-body: 'Inter', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --font-heading: "Playfair Display", serif;
+    --font-body: "Inter", sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
   }
 
   .dark {
@@ -132,6 +132,4 @@
       transform: translateY(0);
     }
   }
-
-
 }

@@ -17,7 +17,7 @@ export function VisualCard({ name, number, expiry, cvc, type, className }: Visua
             case 'gold': return 'bg-gradient-to-br from-[#D4AF7A] via-[#E5C596] to-[#B8941F] border-[#F9F7F4]/20';
             case 'platinum': return 'bg-gradient-to-br from-[#E5E4E2] via-[#F4F4F4] to-[#B0B0B0] border-white/30';
             case 'metal': return 'bg-gradient-to-br from-[#2C2C2C] via-[#4A4A4A] to-[#1A1A1A] border-white/10 text-white';
-            case 'standard': return 'bg-gradient-to-br from-[#7D9B7B] to-[#556B54] border-white/20 text-white';
+            case 'standard': return 'bg-gradient-to-br from-vintage-green to-vintage-green-dark border-white/20 text-white';
             default: return 'bg-gray-800';
         }
     }
