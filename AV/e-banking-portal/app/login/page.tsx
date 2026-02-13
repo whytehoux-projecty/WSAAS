@@ -157,18 +157,7 @@ export default function LoginPage() {
       {/* Content Container - Ensure full height */}
       <div className="container mx-auto px-6 relative z-10 flex h-full items-center justify-center pb-[120px]">
         {/* Login Form - Strictly Centered in the available space */}
-        <div className="relative z-30 flex flex-col items-center">
-          {/* Vault Text Icon - Outside container, under header */}
-          <div className="mb-8 relative w-64 h-24">
-            <Image
-              src="/images/vault-gold-text.png"
-              alt="Vault"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-
+        <div className="relative z-30">
           {/* Explicitly sized container: 320px x auto - Sharper edges (rounded-sm) */}
           <div className="w-[320px] h-auto bg-[#F1F8F5]/75 backdrop-blur-md shadow-2xl rounded-sm p-6 border border-[#1E4B35]/10 flex flex-col justify-center">
             {/* General Error Message */}
