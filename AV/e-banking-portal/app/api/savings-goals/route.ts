@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+
 // In-memory store for savings goals (resets on server restart)
 let savingsGoal = {
     targetAmount: 25000,

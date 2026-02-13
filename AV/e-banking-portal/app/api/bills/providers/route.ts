@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+
 const PROVIDERS_DIRECTORY: Record<string, Record<string, string[]>> = {
     'usa': {
         'UTILITIES': ['Pacific Gas & Electric', 'Con Edison', 'Duke Energy', 'National Grid'],
